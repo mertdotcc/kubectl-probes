@@ -54,6 +54,11 @@ type Workload struct {
 	// no probe of this workload reports drift.
 	TemplateAvailable bool        `json:"templateAvailable,omitempty"`
 	Containers        []Container `json:"containers,omitempty"`
+	// InitContainers names the plain init containers, which cannot carry a
+	// probe at all. They are not Containers and have nothing else to report;
+	// they are named so that a reader looking for one does not take its
+	// absence for an omission. Sidecars are Containers and are not here.
+	InitContainers []string `json:"initContainers,omitempty"`
 }
 
 // Container is a probe-bearing container definition within a workload, named

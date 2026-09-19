@@ -167,7 +167,7 @@ func timeoutAtDefault(c ruleInput) []model.Finding {
 	var out []model.Finding
 	for _, probe := range model.ProbeTypes {
 		e := c.probes[probe]
-		if e == nil || e.TimeoutSeconds != defaultTimeoutSeconds {
+		if e == nil || e.TimeoutSeconds != model.DefaultTimeoutSeconds {
 			continue
 		}
 		out = append(out, model.Finding{Rule: ruleTimeoutAtDefault, Message: fmt.Sprintf(

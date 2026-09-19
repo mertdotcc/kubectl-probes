@@ -13,20 +13,6 @@ import (
 	"github.com/mertdotcc/kubectl-probes/internal/model"
 )
 
-// The kubelet's defaults for the probe fields a spec can leave unset.
-//
-// A probe read from the API server has had these filled in already, and one
-// read from a manifest has not, so the report cannot tell a field left unset
-// from one written with the default value. It does not need to: both mean the
-// kubelet does the same thing.
-const (
-	defaultInitialDelaySeconds int32 = 0
-	defaultPeriodSeconds       int32 = 10
-	defaultTimeoutSeconds      int32 = 1
-	defaultSuccessThreshold    int32 = 1
-	defaultFailureThreshold    int32 = 3
-)
-
 // probeConfig is a probe's configuration as the report carries it: the timing
 // fields exactly as the spec wrote them, so a reader can see which ones the
 // spec said nothing about, and a handler with its defaults already applied
@@ -77,11 +63,11 @@ func effective(probe *corev1.Probe) *effectiveProbe {
 	}
 	return &effectiveProbe{
 		Handler:                       handlerOf(probe.ProbeHandler),
-		InitialDelaySeconds:           orDefault(probe.InitialDelaySeconds, defaultInitialDelaySeconds),
-		PeriodSeconds:                 orDefault(probe.PeriodSeconds, defaultPeriodSeconds),
-		TimeoutSeconds:                orDefault(probe.TimeoutSeconds, defaultTimeoutSeconds),
-		SuccessThreshold:              orDefault(probe.SuccessThreshold, defaultSuccessThreshold),
-		FailureThreshold:              orDefault(probe.FailureThreshold, defaultFailureThreshold),
+		InitialDelaySeconds:           orDefault(probe.InitialDelaySeconds, model.DefaultInitialDelaySeconds),
+		PeriodSeconds:                 orDefault(probe.PeriodSeconds, model.DefaultPeriodSeconds),
+		TimeoutSeconds:                orDefault(probe.TimeoutSeconds, model.DefaultTimeoutSeconds),
+		SuccessThreshold:              orDefault(probe.SuccessThreshold, model.DefaultSuccessThreshold),
+		FailureThreshold:              orDefault(probe.FailureThreshold, model.DefaultFailureThreshold),
 		TerminationGracePeriodSeconds: clone(probe.TerminationGracePeriodSeconds),
 	}
 }
