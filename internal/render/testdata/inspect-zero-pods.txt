@@ -1,0 +1,22 @@
+deploy/batch -n prod
+no pods
+
+container batch
+  Configuration
+    startup    -
+    readiness  exec cat /tmp/ready
+      initialDelaySeconds            0   (default)
+      periodSeconds                  20
+      timeoutSeconds                 5
+      successThreshold               1   (default)
+      failureThreshold               3   (default)
+      terminationGracePeriodSeconds  -   (the pod's own)
+    liveness   -
+  Effective timing
+    Readiness acts after 3 consecutive failures, at worst 1m after the container stops responding.
+  Runtime state
+    no pods are running this container
+  Failure evidence
+    no pods are running this container
+  Findings
+    no-readiness-probe  No readiness probe is configured, so the kubelet reports this container ready the moment it starts and traffic arrives from then on.

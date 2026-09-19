@@ -1,0 +1,34 @@
+rollout.argoproj.io/web -n prod
+1 pod, no template
+
+container web
+  Configuration
+    startup    -
+    readiness  grpc :7070
+      initialDelaySeconds            0   (default)
+      periodSeconds                  10  (default)
+      timeoutSeconds                 1   (default)
+      successThreshold               1   (default)
+      failureThreshold               3   (default)
+      terminationGracePeriodSeconds  -   (the pod's own)
+    liveness   -
+  Effective timing
+    Readiness acts after 3 consecutive failures, at worst 30s after the container stops responding.
+  Runtime state
+    POD    READY  STARTED  RESTARTS  LAST TERMINATION  POD-READY       CONTAINERS-READY
+    web-0  true   true     0         -                 True (45m ago)  True (45m ago)
+  Failure evidence
+    no Unhealthy events are recorded
+
+container istio-proxy (sidecar)
+  Configuration
+    no probes are configured
+  Effective timing
+    no probes are configured
+  Runtime state
+    POD    READY  STARTED  RESTARTS  LAST TERMINATION  POD-READY       CONTAINERS-READY
+    web-0  true   -        0         -                 True (45m ago)  True (45m ago)
+  Failure evidence
+    unknown: listing events was forbidden
+  Findings
+    no-readiness-probe  No readiness probe is configured, so the kubelet reports this container ready the moment it starts and traffic arrives from then on.

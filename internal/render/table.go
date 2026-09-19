@@ -72,10 +72,28 @@ func (c cell) print() string {
 // table is a grid of cells written through tabwriter, so every column ends up
 // as wide as its widest cell and no wider.
 type table struct {
-	rows [][]cell
+	rows []tableRow
 }
 
-func (t *table) add(cells ...cell) { t.rows = append(t.rows, cells) }
+// tableRow is either a row of cells or a line that is printed as it stands.
+type tableRow struct {
+	cells []cell
+	// raw is a line printed verbatim, taking no part in the column widths and
+	// keeping none of its own. It is how the Inspection hangs a probe's latest
+	// failure message under the row that counted it, and how it heads a block
+	// of rows, without either pushing a column out.
+	raw string
+	// literal tells the two apart, because a raw line can legitimately be
+	// empty and a row of no cells cannot.
+	literal bool
+}
+
+func (t *table) add(cells ...cell) { t.rows = append(t.rows, tableRow{cells: cells}) }
+
+// addRaw appends a line printed as it is, between the rows around it.
+func (t *table) addRaw(line string) {
+	t.rows = append(t.rows, tableRow{raw: line, literal: true})
+}
 
 // Two spaces between columns, as kubectl's own tables have, and no minimum
 // width, so a column of short cells does not take a wide one's room.
@@ -90,11 +108,18 @@ const (
 // Alignment is measured on the uncoloured text and the colour is put back
 // afterwards, line by line: every cell sits at a known offset in the aligned
 // line, because tabwriter pads a cell on the right and never rewrites it.
+//
+// Raw lines never reach tabwriter. A line with no tab in it ends every column
+// block it falls in, so feeding one through would break the alignment of the
+// rows on either side of it, which is the one thing a raw line must not do.
 func (t *table) write(w io.Writer) error {
 	var aligned bytes.Buffer
 	tw := tabwriter.NewWriter(&aligned, columnMinWidth, columnTabWidth, columnPadding, ' ', 0)
 	for _, row := range t.rows {
-		for i, c := range row {
+		if row.literal {
+			continue
+		}
+		for i, c := range row.cells {
 			if i > 0 {
 				fmt.Fprint(tw, "\t")
 			}
@@ -107,15 +132,29 @@ func (t *table) write(w io.Writer) error {
 	}
 
 	lines := strings.SplitAfter(aligned.String(), "\n")
-	for i, row := range t.rows {
-		if i >= len(lines) {
-			break
+	next := 0
+	for _, row := range t.rows {
+		line := row.raw + "\n"
+		if !row.literal {
+			if next >= len(lines) {
+				break
+			}
+			line = colorize(lines[next], row.cells)
+			next++
 		}
-		if _, err := io.WriteString(w, colorize(lines[i], row)); err != nil {
+		if _, err := io.WriteString(w, trimRight(line)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// trimRight drops the padding tabwriter puts after the last cell of a line,
+// which is invisible on a terminal and noise in a golden file or a diff. The
+// padding is plain spaces after everything the cells wrote, colour included,
+// so nothing but padding is ever trimmed.
+func trimRight(line string) string {
+	return strings.TrimRight(line, " \t\n") + "\n"
 }
 
 // colorize puts each cell's colour back into an aligned line, leaving the
