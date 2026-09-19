@@ -1,0 +1,286 @@
+{
+  "apiVersion": "probes.kubectl.dev/v1alpha1",
+  "kind": "ProbeReport",
+  "generatedAt": "2026-09-19T14:30:00Z",
+  "workloads": [
+    {
+      "kind": "Deployment",
+      "group": "apps",
+      "name": "api",
+      "namespace": "prod",
+      "displayName": "deploy/api",
+      "podCount": 2,
+      "terminatingPodCount": 1,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "api",
+          "startup": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /healthz:8080",
+                "path": "/healthz",
+                "port": "8080",
+                "scheme": "HTTP"
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 10,
+              "failureThreshold": 30
+            },
+            "timing": {
+              "firstCheck": "5s",
+              "failureDetection": "5m0s",
+              "startupBudget": "5m5s"
+            }
+          },
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /ready:8080",
+                "path": "/ready",
+                "port": "8080",
+                "scheme": "HTTP",
+                "httpHeaders": [
+                  {
+                    "name": "Accept",
+                    "value": "application/json"
+                  }
+                ]
+              },
+              "periodSeconds": 5,
+              "successThreshold": 2
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "15s",
+              "trafficDelay": "5s",
+              "afterStartup": true
+            }
+          },
+          "liveness": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /healthz:8080",
+                "path": "/healthz",
+                "port": "8080",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 10,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "30s",
+              "afterStartup": true
+            },
+            "drifted": true,
+            "template": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /healthz:8080",
+                "path": "/healthz",
+                "port": "8080",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 30,
+              "failureThreshold": 3
+            }
+          },
+          "runtime": {
+            "ready": 1,
+            "total": 2,
+            "restarts": 4,
+            "failures": 7
+          },
+          "pods": [
+            {
+              "name": "api-7d9f4c8b6d-2xk9v",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-09-19T13:58:12Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-09-19T13:58:12Z"
+                }
+              ]
+            },
+            {
+              "name": "api-7d9f4c8b6d-9wq4t",
+              "started": true,
+              "restarts": 4,
+              "lastTermination": {
+                "reason": "Error",
+                "exitCode": 137,
+                "signal": 9,
+                "finishedAt": "2026-09-19T14:21:47Z"
+              },
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "False",
+                  "lastTransitionTime": "2026-09-19T14:22:03Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "False",
+                  "lastTransitionTime": "2026-09-19T14:22:03Z"
+                }
+              ],
+              "events": [
+                {
+                  "probe": "liveness",
+                  "count": 7,
+                  "firstSeen": "2026-09-19T14:02:31Z",
+                  "lastSeen": "2026-09-19T14:29:11Z",
+                  "message": "Liveness probe failed: HTTP probe failed with statuscode: 503"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "timeout-at-default",
+              "message": "startup, readiness, and liveness leave timeoutSeconds unset, so every check gives up after 1s."
+            }
+          ]
+        },
+        {
+          "name": "istio-proxy",
+          "sidecar": true,
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /healthz/ready:15021",
+                "path": "/healthz/ready",
+                "port": "15021",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 15,
+              "timeoutSeconds": 3,
+              "failureThreshold": 4
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "1m0s"
+            }
+          },
+          "runtime": {
+            "ready": 2,
+            "total": 2,
+            "restarts": 0,
+            "failures": 0
+          },
+          "pods": [
+            {
+              "name": "api-7d9f4c8b6d-2xk9v",
+              "ready": true,
+              "started": true
+            },
+            {
+              "name": "api-7d9f4c8b6d-9wq4t",
+              "ready": true,
+              "started": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "group": "apps",
+      "name": "archiver",
+      "namespace": "prod",
+      "displayName": "sts/archiver",
+      "podCount": 0,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "archiver",
+          "liveness": {
+            "config": {
+              "handler": {
+                "type": "exec",
+                "summary": "exec /bin/health --deep",
+                "command": [
+                  "/bin/health",
+                  "--deep"
+                ]
+              },
+              "initialDelaySeconds": 60,
+              "periodSeconds": 20,
+              "timeoutSeconds": 30,
+              "failureThreshold": 2
+            },
+            "timing": {
+              "firstCheck": "1m0s",
+              "failureDetection": "40s"
+            }
+          },
+          "findings": [
+            {
+              "rule": "no-readiness-probe",
+              "message": "the container has no readiness probe, so it receives traffic as soon as it starts."
+            },
+            {
+              "rule": "timeout-exceeds-period",
+              "message": "liveness has a timeoutSeconds of 30 above its periodSeconds of 20, so checks overlap."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "Rollout",
+      "group": "argoproj.io",
+      "name": "checkout",
+      "namespace": "prod",
+      "displayName": "rollout.argoproj.io/checkout",
+      "podCount": 2,
+      "containers": [
+        {
+          "name": "checkout",
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "grpc",
+                "summary": "grpc :9000 checkout.Health",
+                "port": "9000",
+                "service": "checkout.Health"
+              },
+              "periodSeconds": 10
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "30s"
+            }
+          },
+          "runtime": {
+            "ready": 2,
+            "total": 2,
+            "restarts": 0
+          },
+          "pods": [
+            {
+              "name": "checkout-64c6f8d5b9-ltz7p",
+              "ready": true
+            },
+            {
+              "name": "checkout-64c6f8d5b9-v8rn2",
+              "ready": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

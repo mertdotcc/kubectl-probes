@@ -1,0 +1,199 @@
+apiVersion: probes.kubectl.dev/v1alpha1
+generatedAt: "2026-09-19T14:30:00Z"
+kind: ProbeReport
+workloads:
+- containers:
+  - findings:
+    - message: startup, readiness, and liveness leave timeoutSeconds unset, so every
+        check gives up after 1s.
+      rule: timeout-at-default
+    liveness:
+      config:
+        failureThreshold: 3
+        handler:
+          path: /healthz
+          port: "8080"
+          scheme: HTTP
+          summary: GET /healthz:8080
+          type: http
+        periodSeconds: 10
+      drifted: true
+      template:
+        failureThreshold: 3
+        handler:
+          path: /healthz
+          port: "8080"
+          scheme: HTTP
+          summary: GET /healthz:8080
+          type: http
+        periodSeconds: 30
+      timing:
+        afterStartup: true
+        failureDetection: 30s
+        firstCheck: 0s
+    name: api
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-09-19T13:58:12Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-09-19T13:58:12Z"
+        status: "True"
+        type: ContainersReady
+      name: api-7d9f4c8b6d-2xk9v
+      ready: true
+      started: true
+    - conditions:
+      - lastTransitionTime: "2026-09-19T14:22:03Z"
+        status: "False"
+        type: Ready
+      - lastTransitionTime: "2026-09-19T14:22:03Z"
+        status: "False"
+        type: ContainersReady
+      events:
+      - count: 7
+        firstSeen: "2026-09-19T14:02:31Z"
+        lastSeen: "2026-09-19T14:29:11Z"
+        message: 'Liveness probe failed: HTTP probe failed with statuscode: 503'
+        probe: liveness
+      lastTermination:
+        exitCode: 137
+        finishedAt: "2026-09-19T14:21:47Z"
+        reason: Error
+        signal: 9
+      name: api-7d9f4c8b6d-9wq4t
+      restarts: 4
+      started: true
+    readiness:
+      config:
+        handler:
+          httpHeaders:
+          - name: Accept
+            value: application/json
+          path: /ready
+          port: "8080"
+          scheme: HTTP
+          summary: GET /ready:8080
+          type: http
+        periodSeconds: 5
+        successThreshold: 2
+      timing:
+        afterStartup: true
+        failureDetection: 15s
+        firstCheck: 0s
+        trafficDelay: 5s
+    runtime:
+      failures: 7
+      ready: 1
+      restarts: 4
+      total: 2
+    startup:
+      config:
+        failureThreshold: 30
+        handler:
+          path: /healthz
+          port: "8080"
+          scheme: HTTP
+          summary: GET /healthz:8080
+          type: http
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      timing:
+        failureDetection: 5m0s
+        firstCheck: 5s
+        startupBudget: 5m5s
+  - name: istio-proxy
+    pods:
+    - name: api-7d9f4c8b6d-2xk9v
+      ready: true
+      started: true
+    - name: api-7d9f4c8b6d-9wq4t
+      ready: true
+      started: true
+    readiness:
+      config:
+        failureThreshold: 4
+        handler:
+          path: /healthz/ready
+          port: "15021"
+          scheme: HTTP
+          summary: GET /healthz/ready:15021
+          type: http
+        periodSeconds: 15
+        timeoutSeconds: 3
+      timing:
+        failureDetection: 1m0s
+        firstCheck: 0s
+    runtime:
+      failures: 0
+      ready: 2
+      restarts: 0
+      total: 2
+    sidecar: true
+  displayName: deploy/api
+  group: apps
+  kind: Deployment
+  name: api
+  namespace: prod
+  podCount: 2
+  templateAvailable: true
+  terminatingPodCount: 1
+- containers:
+  - findings:
+    - message: the container has no readiness probe, so it receives traffic as soon
+        as it starts.
+      rule: no-readiness-probe
+    - message: liveness has a timeoutSeconds of 30 above its periodSeconds of 20,
+        so checks overlap.
+      rule: timeout-exceeds-period
+    liveness:
+      config:
+        failureThreshold: 2
+        handler:
+          command:
+          - /bin/health
+          - --deep
+          summary: exec /bin/health --deep
+          type: exec
+        initialDelaySeconds: 60
+        periodSeconds: 20
+        timeoutSeconds: 30
+      timing:
+        failureDetection: 40s
+        firstCheck: 1m0s
+    name: archiver
+  displayName: sts/archiver
+  group: apps
+  kind: StatefulSet
+  name: archiver
+  namespace: prod
+  podCount: 0
+  templateAvailable: true
+- containers:
+  - name: checkout
+    pods:
+    - name: checkout-64c6f8d5b9-ltz7p
+      ready: true
+    - name: checkout-64c6f8d5b9-v8rn2
+      ready: true
+    readiness:
+      config:
+        handler:
+          port: "9000"
+          service: checkout.Health
+          summary: grpc :9000 checkout.Health
+          type: grpc
+        periodSeconds: 10
+      timing:
+        failureDetection: 30s
+        firstCheck: 0s
+    runtime:
+      ready: 2
+      restarts: 0
+      total: 2
+  displayName: rollout.argoproj.io/checkout
+  group: argoproj.io
+  kind: Rollout
+  name: checkout
+  namespace: prod
+  podCount: 2
