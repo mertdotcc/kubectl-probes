@@ -33,4 +33,4 @@ jobs:
     # Opens the krew-index PR from .krew.yaml. The first release still needs a
     # human to get the plugin accepted into krew-index; see the release ticket.
     - name: Update krew-index
-      uses: rajatjindal/krew-release-bot@v0.0.47
+      uses: rajatjindal/krew-release-bot@v0.0.51
