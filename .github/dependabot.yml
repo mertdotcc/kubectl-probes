@@ -1,0 +1,22 @@
+version: 2
+
+updates:
+- package-ecosystem: gomod
+  directory: /
+  schedule:
+    interval: weekly
+  commit-message:
+    prefix: chore(deps)
+  groups:
+    # The k8s.io modules are released in lockstep, so bumping them apart just
+    # produces PRs that cannot build.
+    kubernetes:
+      patterns:
+      - k8s.io/*
+
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+  commit-message:
+    prefix: chore(deps)
