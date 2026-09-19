@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Release and publish to krew
+    runs-on: ubuntu-latest
+    steps:
+    # goreleaser builds its changelog from history, so it needs the full clone.
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+
+    - name: goreleaser release
+      uses: goreleaser/goreleaser-action@v6
+      with:
+        version: '~> v2'
+        args: release --clean
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # Opens the krew-index PR from .krew.yaml. The first release still needs a
+    # human to get the plugin accepted into krew-index; see the release ticket.
+    - name: Update krew-index
+      uses: rajatjindal/krew-release-bot@v0.0.47
