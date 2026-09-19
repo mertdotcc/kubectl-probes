@@ -1,0 +1,6 @@
+NAMESPACE  WORKLOAD       CONTAINER  STARTUP   STARTUP-HANDLER    READINESS  READINESS-HANDLER  LIVENESS    LIVENESS-HANDLER   READY  RESTARTS  FAILURES  FINDINGS  DRIFT
+prod       deploy/api     api        http:30s  GET /healthz:8080  http:10s   GET /ready:8080    http:1m*    GET /healthz:8080  4/5    12        37        2         liveness
+prod       deploy/api     envoy      -         -                  tcp:15s    tcp :9901          -           -                  5/5    0         0         1         -
+prod       sts/db         db         exec:5m   exec pg_isready    exec:30s   exec pg_isready    -           -                  3/3    0         -         0         -
+staging    deploy/worker  worker     -         -                  -          -                  -           -                  0/0    0         0         1         -
+staging    ds/agent       agent      -*        -                  grpc:30s   grpc :7070         grpc:1m30s  grpc :7070         8/8    3         0         0         startup
