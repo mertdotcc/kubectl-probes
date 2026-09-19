@@ -328,6 +328,26 @@ func TestAnalyze(t *testing.T) {
 
 // A workload scaled to zero is still a workload: the template is all there is
 // to report, and there is no runtime state to claim.
+// A plain init container cannot carry a probe, so it is not a container of the
+// workload. It is still named, because a reader who goes looking for it has to
+// be able to tell "cannot have probes" from "this tool missed it".
+func TestAnalyzeNamesPlainInitContainers(t *testing.T) {
+	report := Analyze(&collect.Result{Workloads: []collect.Workload{apiWorkload(t)}}, generatedAt, Options{})
+
+	got := report.Workloads[0].InitContainers
+	if len(got) != 1 || got[0] != "wait-for-db" {
+		t.Errorf("InitContainers = %v, want [wait-for-db]", got)
+	}
+	// The sidecar is a container of the workload and is not named here twice.
+	for _, container := range report.Workloads[0].Containers {
+		for _, name := range got {
+			if container.Name == name {
+				t.Errorf("%s is reported both as a container and as a plain init container", name)
+			}
+		}
+	}
+}
+
 func TestAnalyzeWithoutPods(t *testing.T) {
 	workload := collect.Workload{
 		GroupKind: schema.GroupKind{Group: "apps", Kind: "StatefulSet"},

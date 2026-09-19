@@ -48,6 +48,7 @@ func workloadOf(workload collect.Workload, gaps collect.Gaps, opts Options) mode
 	for _, ref := range containersOf(live, workload.Template) {
 		out.Containers = append(out.Containers, containerOf(ref, live, workload.Template, gaps, opts))
 	}
+	out.InitContainers = plainInitContainers(specsOf(live, workload.Template))
 	return out
 }
 
@@ -84,13 +85,7 @@ type containerRef struct {
 // writes them, so the report reads the way the spec does whichever order the
 // API server listed the pods in.
 func containersOf(live []collect.Pod, template *corev1.PodSpec) []containerRef {
-	specs := make([]*corev1.PodSpec, 0, len(live)+1)
-	for _, pod := range live {
-		specs = append(specs, &pod.Pod.Spec)
-	}
-	if len(specs) == 0 && template != nil {
-		specs = append(specs, template)
-	}
+	specs := specsOf(live, template)
 
 	var refs []containerRef
 	seen := map[string]bool{}
@@ -123,6 +118,41 @@ func probeBearing(spec *corev1.PodSpec) []containerRef {
 		}
 	}
 	return refs
+}
+
+// specsOf is what the workload's containers are read from: the pods that are
+// running, and the template alone when nothing is.
+func specsOf(live []collect.Pod, template *corev1.PodSpec) []*corev1.PodSpec {
+	specs := make([]*corev1.PodSpec, 0, len(live)+1)
+	for _, pod := range live {
+		specs = append(specs, &pod.Pod.Spec)
+	}
+	if len(specs) == 0 && template != nil {
+		specs = append(specs, template)
+	}
+	return specs
+}
+
+// plainInitContainers names the init containers that are not sidecars, in the
+// order the spec writes them.
+//
+// They cannot carry a probe, so they are not containers of the report and have
+// no probes, timing, or findings of their own. Naming them is what keeps a
+// reader from reading their absence as something this tool missed.
+func plainInitContainers(specs []*corev1.PodSpec) []string {
+	var names []string
+	seen := map[string]bool{}
+	for _, spec := range specs {
+		for i := range spec.InitContainers {
+			name := spec.InitContainers[i].Name
+			if isSidecar(&spec.InitContainers[i]) || seen[name] {
+				continue
+			}
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 func isSidecar(container *corev1.Container) bool {
