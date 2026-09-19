@@ -1,0 +1,48 @@
+deploy/api -n prod
+2 pods, 1 terminating
+
+container api
+  Configuration
+    startup    GET /healthz:8080
+      initialDelaySeconds            0                 (default)
+      periodSeconds                  10                (default)
+      timeoutSeconds                 1                 (default)
+      successThreshold               1                 (default)
+      failureThreshold               30
+      terminationGracePeriodSeconds  -                 (the pod's own)
+    readiness  GET /ready:8080
+      initialDelaySeconds            0                 (default)
+      periodSeconds                  5
+      timeoutSeconds                 1                 (default)
+      successThreshold               2
+      failureThreshold               3                 (default)
+      terminationGracePeriodSeconds  -                 (the pod's own)
+      httpHeaders                    X-Probe: kubelet
+    liveness   GET /healthz:8080
+      initialDelaySeconds            10
+      periodSeconds                  10
+      timeoutSeconds                 1                 (default)
+      successThreshold               1                 (default)
+      failureThreshold               3                 (default)
+      terminationGracePeriodSeconds  30
+  Effective timing
+    Startup gives the container 5m to come up before the kubelet restarts it.
+    Readiness acts after 3 consecutive failures, at worst 15s after the container stops responding. Readiness begins after the startup probe succeeds. Traffic can first arrive 5s after the startup probe succeeds.
+    Liveness acts after 3 consecutive failures, at worst 30s after the container stops responding. Liveness begins after the startup probe succeeds. Liveness waits 10s before its first check.
+  Drift
+    PROBE     FIELD                          RUNNING  TEMPLATE
+    liveness  periodSeconds                  10       30
+    liveness  terminationGracePeriodSeconds  30       -
+  Runtime state
+    POD                  READY  STARTED  RESTARTS  LAST TERMINATION                       POD-READY        CONTAINERS-READY
+    api-6c9f7d4b8-2xklm  true   true     0         -                                      True (120m ago)  True (120m ago)
+    api-6c9f7d4b8-9wqzt  false  true     12        OOMKilled, exit 137, signal 9, 3h ago  False (5m ago)   False (5m ago)
+  Failure evidence
+    POD                  PROBE     FAILURES  FIRST SEEN  LAST SEEN
+    api-6c9f7d4b8-9wqzt  liveness  37        3h ago      2m ago
+      Liveness probe failed: HTTP probe failed with statuscode: 503
+  Findings
+    liveness-same-as-readiness  Liveness and readiness both check GET /healthz:8080, so whatever takes this container out of service also restarts it.
+    probe-failures-recent       The cluster reports 37 recent Unhealthy events for the liveness probe, so this is failing now and not only on paper.
+
+init containers (no probes possible): migrate, seed

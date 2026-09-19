@@ -1,0 +1,22 @@
+pod/canary -n default
+no pods
+
+container canary
+  Configuration
+    startup    -
+    readiness  -
+    liveness   tcp :8080
+      initialDelaySeconds            0   (default)
+      periodSeconds                  10  (default)
+      timeoutSeconds                 1   (default)
+      successThreshold               1   (default)
+      failureThreshold               3   (default)
+      terminationGracePeriodSeconds  -   (the pod's own)
+  Effective timing
+    Liveness acts after 3 consecutive failures, at worst 30s after the container stops responding.
+  Runtime state
+    no pods are running this container
+  Failure evidence
+    no pods are running this container
+
+init containers (no probes possible): wait-for-db
