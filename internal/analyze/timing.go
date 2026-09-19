@@ -26,7 +26,7 @@ func timingOf(probe model.ProbeType, e *effectiveProbe, afterStartup bool) *mode
 		FirstCheck: model.Seconds(e.InitialDelaySeconds),
 		// It takes failureThreshold consecutive failures to act, one per
 		// period.
-		FailureDetection: model.Seconds(e.PeriodSeconds * e.FailureThreshold),
+		FailureDetection: failureDetection(e),
 		AfterStartup:     afterStartup && probe != model.ProbeStartup,
 	}
 
@@ -34,7 +34,8 @@ func timingOf(probe model.ProbeType, e *effectiveProbe, afterStartup bool) *mode
 	case model.ProbeStartup:
 		// Everything the startup probe allows before the kubelet gives up on
 		// the container and restarts it.
-		timing.StartupBudget = model.SecondsPtr(e.InitialDelaySeconds + e.PeriodSeconds*e.FailureThreshold)
+		budget := model.Seconds(e.InitialDelaySeconds) + failureDetection(e)
+		timing.StartupBudget = &budget
 	case model.ProbeReadiness:
 		// Traffic waits for successThreshold consecutive successes. At one,
 		// the default, that is the first check and FirstCheck already says so.
