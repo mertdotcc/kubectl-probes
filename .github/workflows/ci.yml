@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+
+    - name: go test
+      run: go test ./...
+
+    - name: go vet
+      run: go vet ./...
+
+    - name: gofmt
+      run: |
+        unformatted=$(gofmt -l .)
+        if [ -n "$unformatted" ]; then
+          echo "These files are not gofmt'd:"
+          echo "$unformatted"
+          exit 1
+        fi
+
+    - name: go mod tidy is clean
+      run: |
+        go mod tidy
+        git diff --exit-code
+
+    - name: goreleaser snapshot
+      uses: goreleaser/goreleaser-action@v6
+      with:
+        version: '~> v2'
+        args: release --snapshot --clean
