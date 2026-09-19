@@ -12,18 +12,27 @@ import (
 	"github.com/mertdotcc/kubectl-probes/internal/model"
 )
 
+// Options is what a run asks of Analyze beyond the facts it was given.
+type Options struct {
+	// NoFindings leaves the rules unrun, so the Report carries facts only.
+	// It is --no-findings at the CLI, and withholding the opinions here
+	// rather than in each surface is what makes the flag mean the same thing
+	// in the Overview, the Inspection, and the JSON and YAML output.
+	NoFindings bool
+}
+
 // Analyze turns what a run collected into the Report every surface is built
 // from. It reads nothing and decides nothing about the cluster: the same
 // Result always produces the same Report.
-func Analyze(result *collect.Result, generatedAt time.Time) *model.Report {
+func Analyze(result *collect.Result, generatedAt time.Time, opts Options) *model.Report {
 	report := model.New(generatedAt)
 	for _, workload := range result.Workloads {
-		report.Workloads = append(report.Workloads, workloadOf(workload, result.Gaps))
+		report.Workloads = append(report.Workloads, workloadOf(workload, result.Gaps, opts))
 	}
 	return report
 }
 
-func workloadOf(workload collect.Workload, gaps collect.Gaps) model.Workload {
+func workloadOf(workload collect.Workload, gaps collect.Gaps, opts Options) model.Workload {
 	live, terminating := livePods(workload.Pods)
 
 	out := model.Workload{
@@ -37,7 +46,7 @@ func workloadOf(workload collect.Workload, gaps collect.Gaps) model.Workload {
 		TemplateAvailable:   workload.Template != nil,
 	}
 	for _, ref := range containersOf(live, workload.Template) {
-		out.Containers = append(out.Containers, containerOf(ref, live, workload.Template, gaps))
+		out.Containers = append(out.Containers, containerOf(ref, live, workload.Template, gaps, opts))
 	}
 	return out
 }
@@ -123,7 +132,7 @@ func isSidecar(container *corev1.Container) bool {
 // containerOf is everything the report says about one container of a workload:
 // how its probes are configured, what that means, whether the template says
 // something else, and what the pods running it report.
-func containerOf(ref containerRef, live []collect.Pod, template *corev1.PodSpec, gaps collect.Gaps) model.Container {
+func containerOf(ref containerRef, live []collect.Pod, template *corev1.PodSpec, gaps collect.Gaps, opts Options) model.Container {
 	out := model.Container{Name: ref.name, Sidecar: ref.sidecar}
 
 	fromTemplate := specContainer(template, ref.name)
@@ -142,6 +151,13 @@ func containerOf(ref containerRef, live []collect.Pod, template *corev1.PodSpec,
 	}
 
 	out.Runtime, out.Pods = aggregate(live, ref.name, gaps)
+
+	// Findings come last because they are opinions about everything above
+	// them, and they are kept in their own field so a reader can tell them
+	// from the facts they were drawn from.
+	if !opts.NoFindings {
+		out.Findings = findingsFor(ruleInputFor(configured, &out))
+	}
 	return out
 }
 

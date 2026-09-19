@@ -193,7 +193,7 @@ func apiWorkload(t *testing.T) collect.Workload {
 }
 
 func TestAnalyze(t *testing.T) {
-	report := Analyze(&collect.Result{Workloads: []collect.Workload{apiWorkload(t)}}, generatedAt)
+	report := Analyze(&collect.Result{Workloads: []collect.Workload{apiWorkload(t)}}, generatedAt, Options{})
 
 	if report.APIVersion != model.APIVersion || report.Kind != model.Kind {
 		t.Errorf("report = %s/%s, want %s/%s", report.APIVersion, report.Kind, model.APIVersion, model.Kind)
@@ -336,7 +336,7 @@ func TestAnalyzeWithoutPods(t *testing.T) {
 		Template:  specFrom(t, apiTemplate),
 	}
 
-	report := Analyze(&collect.Result{Workloads: []collect.Workload{workload}}, generatedAt)
+	report := Analyze(&collect.Result{Workloads: []collect.Workload{workload}}, generatedAt, Options{})
 	got := report.Workloads[0]
 
 	if got.DisplayName != "sts/archiver" || got.PodCount != 0 || got.TerminatingPodCount != 0 {
@@ -369,7 +369,7 @@ func TestAnalyzeWithEveryPodTerminating(t *testing.T) {
 	workload := apiWorkload(t)
 	workload.Pods = workload.Pods[2:]
 
-	got := Analyze(&collect.Result{Workloads: []collect.Workload{workload}}, generatedAt).Workloads[0]
+	got := Analyze(&collect.Result{Workloads: []collect.Workload{workload}}, generatedAt, Options{}).Workloads[0]
 	if got.PodCount != 0 || got.TerminatingPodCount != 1 {
 		t.Errorf("PodCount = %d, TerminatingPodCount = %d, want 0 and 1", got.PodCount, got.TerminatingPodCount)
 	}
@@ -387,7 +387,7 @@ func TestAnalyzeWithoutATemplate(t *testing.T) {
 	workload := apiWorkload(t)
 	workload.Template = nil
 
-	got := Analyze(&collect.Result{Workloads: []collect.Workload{workload}}, generatedAt).Workloads[0]
+	got := Analyze(&collect.Result{Workloads: []collect.Workload{workload}}, generatedAt, Options{}).Workloads[0]
 	if got.TemplateAvailable {
 		t.Error("TemplateAvailable = true, want false")
 	}
@@ -411,7 +411,7 @@ func TestAnalyzeProbeMissingFromTheRunningPod(t *testing.T) {
 	workload.Pods = workload.Pods[:1]
 	workload.Pods[0].Pod.Spec.Containers[0].LivenessProbe = nil
 
-	got := Analyze(&collect.Result{Workloads: []collect.Workload{workload}}, generatedAt).Workloads[0]
+	got := Analyze(&collect.Result{Workloads: []collect.Workload{workload}}, generatedAt, Options{}).Workloads[0]
 	liveness := got.Containers[0].Liveness
 	if liveness == nil {
 		t.Fatal("liveness is absent entirely, want the template's probe reported as drift")
@@ -431,7 +431,7 @@ func TestAnalyzeWithoutEvents(t *testing.T) {
 		Gaps:      collect.Gaps{Events: true},
 	}
 
-	got := Analyze(result, generatedAt).Workloads[0]
+	got := Analyze(result, generatedAt, Options{}).Workloads[0]
 	for _, container := range got.Containers {
 		if container.Runtime == nil {
 			t.Fatalf("%s has no runtime state", container.Name)
@@ -443,7 +443,7 @@ func TestAnalyzeWithoutEvents(t *testing.T) {
 }
 
 func TestAnalyzeWithoutWorkloads(t *testing.T) {
-	report := Analyze(&collect.Result{}, generatedAt)
+	report := Analyze(&collect.Result{}, generatedAt, Options{})
 	if len(report.Workloads) != 0 {
 		t.Errorf("workloads = %+v, want none", report.Workloads)
 	}

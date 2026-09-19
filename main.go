@@ -19,6 +19,8 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/klog/v2"
 
+	"github.com/mertdotcc/kubectl-probes/internal/analyze"
+
 	// Authentication plugins so kubeconfigs pointing at GKE, EKS, AKS, and
 	// OIDC providers work the same way they do for kubectl itself.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -152,10 +154,19 @@ func (o *options) run(args []string) error {
 	}
 	setupColor(o.color)
 
-	// Collecting, analyzing, and rendering land here. The internal packages
-	// are deliberately empty until those tickets fill them in.
+	// Collecting, analyzing with analyzeOptions, and rendering land here. The
+	// render package is deliberately empty until those tickets fill it in.
 	_ = args
 	return nil
+}
+
+// analyzeOptions is what the flags mean to the analyze package.
+//
+// --no-findings is applied there, at the source, so the Report itself carries
+// no opinions and every output format is quiet about them without each having
+// to remember to be.
+func (o *options) analyzeOptions() analyze.Options {
+	return analyze.Options{NoFindings: o.noFindings}
 }
 
 func (o *options) validate() error {
