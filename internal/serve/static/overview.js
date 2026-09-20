@@ -7,6 +7,8 @@
 // browser draws and the terminal would not is a row nobody can check against
 // the cluster, which ADR-0005 rules out.
 
+import { short } from "./sentences.js";
+
 // The probes in the order every surface presents them, which is the order the
 // kubelet puts them to work in. It is model.ProbeTypes.
 export const PROBE_TYPES = ["startup", "readiness", "liveness"];
@@ -154,22 +156,6 @@ function headline(probe, timing) {
     return short(timing.startupBudget);
   }
   return short(timing.failureDetection);
-}
-
-// short is a duration as a table prints it: the wording the Report carries
-// with the trailing zero units trimmed, so a two minute budget reads 2m
-// rather than 2m0s.
-function short(duration) {
-  if (!duration) {
-    return "";
-  }
-  if (duration.endsWith("h0m0s")) {
-    return duration.slice(0, -"0m0s".length);
-  }
-  if (duration.endsWith("m0s")) {
-    return duration.slice(0, -"0s".length);
-  }
-  return duration;
 }
 
 // handlerType names how a probe asks. A probe with no handler at all cannot
