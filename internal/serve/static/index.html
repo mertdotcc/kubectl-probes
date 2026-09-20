@@ -3,33 +3,71 @@
   Copyright 2026 Mert Öztürk
   SPDX-License-Identifier: Apache-2.0
 
-  The Dashboard is not drawn yet. Until it is, this page is the proof that the
-  stream works: it prints whichever Report arrived last. The script is a file
-  of its own because the policy this page is served under forbids inline
-  script, and a Report carries text the cluster wrote.
+  The Dashboard's frame: a masthead saying whether the plugin is still
+  talking, the places a note goes, and an empty table the script fills from
+  whichever Report arrived last. Nothing here says anything about a cluster,
+  because nothing here has seen one.
+
+  The style and the script are files of their own. The policy this page is
+  served under forbids both inline, and a Report carries text the cluster
+  wrote. See ADR-0006.
 -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>kubectl probes</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="app.css" />
   </head>
   <body>
-    <h1>kubectl probes</h1>
+    <header class="masthead">
+      <h1>kubectl probes</h1>
+      <p class="connection" id="connection" role="status">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="connection-state">connecting</span>
+      </p>
+    </header>
 
-    <p id="status">Connecting to the stream…</p>
+    <main>
+      <div class="notes" id="notes" role="status"></div>
 
-    <dl>
-      <dt>Opening on</dt>
-      <dd id="initial">the Overview</dd>
-      <dt>Observed since</dt>
-      <dd id="started">…</dd>
-      <dt>Reports received</dt>
-      <dd id="received">0</dd>
-    </dl>
+      <section class="inspection" id="inspection" aria-labelledby="inspection-name" hidden>
+        <div class="inspection-head">
+          <h2 id="inspection-name" class="mono"></h2>
+          <button type="button" id="inspection-close">Back to the Overview</button>
+        </div>
+        <p class="inspection-note" id="inspection-note"></p>
+        <pre class="inspection-body mono" id="inspection-body"></pre>
+      </section>
 
-    <pre id="report">Waiting for the first Report…</pre>
+      <section class="overview" aria-labelledby="overview-heading">
+        <div class="controls">
+          <h2 id="overview-heading">Overview</h2>
+          <input
+            type="search"
+            id="filter"
+            aria-label="Filter by workload or container name"
+            placeholder="Filter workloads and containers"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="button" id="sort" aria-pressed="false">Severity order</button>
+        </div>
 
-    <script type="module" src="dashboard.js"></script>
+        <p class="empty" id="empty" hidden></p>
+
+        <div class="scroller">
+          <table id="overview">
+            <thead>
+              <tr id="overview-head"></tr>
+            </thead>
+            <tbody id="overview-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
   </body>
 </html>

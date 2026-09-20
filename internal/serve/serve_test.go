@@ -10,6 +10,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -347,22 +349,113 @@ func TestAssetsAreServedUnderAStrictPolicy(t *testing.T) {
 	if got := resp.Header.Get("X-Content-Type-Options"); got != "nosniff" {
 		t.Errorf("X-Content-Type-Options is %q, want nosniff", got)
 	}
-	if !strings.Contains(page, `src="dashboard.js"`) {
+	if !strings.Contains(page, `src="app.js"`) {
 		t.Errorf("the page does not load the script the policy makes it keep in a file:\n%s", page)
 	}
 	if strings.Contains(page, "<script>") {
 		t.Errorf("the page carries inline script, which the policy forbids:\n%s", page)
 	}
+	// Style is forbidden inline for the same reason script is: style-src has
+	// nothing of its own to fall back on but default-src.
+	if !strings.Contains(page, `href="app.css"`) {
+		t.Errorf("the page does not load the style the policy makes it keep in a file:\n%s", page)
+	}
+	if strings.Contains(page, "<style>") {
+		t.Errorf("the page carries inline style, which the policy forbids:\n%s", page)
+	}
 
 	// The script is embedded alongside the page, or the page is on its own in
 	// the archive that ships.
-	if _, script := get(t, url+"/dashboard.js"); !strings.Contains(script, "EventSource") {
+	if _, script := get(t, url+"/app.js"); !strings.Contains(script, "EventSource") {
 		t.Errorf("the script does not connect to the stream:\n%s", script)
 	}
 	// Every response carries the policy, not only the one the page is on.
 	if resp, _ := get(t, url+"/api/meta"); resp.Header.Get("Content-Security-Policy") == "" {
 		t.Error("the metadata is served without a policy")
 	}
+}
+
+// contentTypes is what a browser insists on for each of the files the page
+// loads. nosniff is set on every response, so a stylesheet served as plain
+// text is a page with no style, and a module served as anything but
+// JavaScript is a page that does nothing at all.
+var contentTypes = map[string]string{
+	".css": "text/css",
+	".js":  "text/javascript",
+	".svg": "image/svg+xml",
+}
+
+// What the page loads, and what a module imports. Both are this repo's own
+// files rather than anything a cluster wrote, so they are matched rather than
+// parsed.
+var (
+	referenced = regexp.MustCompile(`(?:src|href)="([^"]+)"`)
+	imported   = regexp.MustCompile(`(?m)^import[^"\']*["\']\./([^"\']+)["\']`)
+)
+
+// The Dashboard is one binary, which means every file the page pulls in is
+// embedded in it: the style, the icon and the script the page names, and the
+// modules that script imports. A file that is not is a page that half loads
+// on the machine the plugin was installed on rather than the one it was
+// built on.
+func TestEveryAssetThePageLoadsIsServed(t *testing.T) {
+	_, url := serving(t, Options{Source: Snapshot(reported("api"))})
+	_, page := get(t, url+"/")
+
+	pending := loads(page)
+	if len(pending) == 0 {
+		t.Fatalf("the page loads nothing at all:\n%s", page)
+	}
+
+	seen := map[string]bool{}
+	for len(pending) > 0 {
+		asset := pending[0]
+		pending = pending[1:]
+		if seen[asset] {
+			continue
+		}
+		seen[asset] = true
+
+		// The Dashboard talks to itself and to nothing else. A page that
+		// reaches off loopback has told somebody else what is in the
+		// cluster, and the policy would have refused it anyway.
+		if strings.Contains(asset, "://") || strings.HasPrefix(asset, "/") {
+			t.Errorf("the page loads %s from somewhere that is not the plugin", asset)
+			continue
+		}
+		want, known := contentTypes[path.Ext(asset)]
+		if !known {
+			t.Errorf("the page loads %s, which is not a style, an icon or a script", asset)
+			continue
+		}
+
+		resp, body := get(t, url+"/"+asset)
+		if got, _, _ := strings.Cut(resp.Header.Get("Content-Type"), ";"); got != want {
+			t.Errorf("%s is served as %q, want %s", asset, got, want)
+		}
+		if strings.TrimSpace(body) == "" {
+			t.Errorf("%s is served empty", asset)
+		}
+		pending = append(pending, imports(body)...)
+	}
+}
+
+// loads is every file the page names, in the order it names them.
+func loads(page string) []string {
+	var assets []string
+	for _, match := range referenced.FindAllStringSubmatch(page, -1) {
+		assets = append(assets, match[1])
+	}
+	return assets
+}
+
+// imports is every module a module pulls in beside itself.
+func imports(module string) []string {
+	var assets []string
+	for _, match := range imported.FindAllStringSubmatch(module, -1) {
+		assets = append(assets, match[1])
+	}
+	return assets
 }
 
 // Run is the whole of --serve: bind, say where, serve until the signal, and
