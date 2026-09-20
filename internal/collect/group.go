@@ -97,6 +97,16 @@ func newWorkload(key workloadKey, owner *unstructured.Unstructured) *Workload {
 	return workload
 }
 
+// keysOf indexes workloads by identity, so a workload already built from the
+// pods that belong to it is not added a second time from its own object.
+func keysOf(workloads []Workload) map[workloadKey]bool {
+	keys := make(map[workloadKey]bool, len(workloads))
+	for _, workload := range workloads {
+		keys[workloadKey{groupKind: workload.GroupKind, namespace: workload.Namespace, name: workload.Name}] = true
+	}
+	return keys
+}
+
 func sortWorkloads(workloads []Workload) {
 	sort.Slice(workloads, func(i, j int) bool {
 		a, b := workloads[i], workloads[j]

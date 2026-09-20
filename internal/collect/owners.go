@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -42,18 +41,22 @@ func newOwnerWalker(get objectGetter, gaps *Gaps) *ownerWalker {
 	return &ownerWalker{get: get, gaps: gaps, top: map[types.UID]*unstructured.Unstructured{}}
 }
 
-// TopMost returns the workload a pod belongs to, or nil when the pod has no
-// controller and is its own workload.
+// TopMost returns the workload an object belongs to, or nil when the object
+// has no controller and is its own workload.
+//
+// It takes any object rather than a pod because the same question is worth
+// asking of a ReplicaSet read out of a manifest: a ReplicaSet whose Deployment
+// is there too is not a workload, it is part of one.
 //
 // An owner that cannot be read stops the walk: the last owner reference is
 // reported as the workload, with the gap recorded, because a pod under an
 // unreadable Deployment is better described by its ReplicaSet than dropped.
-func (w *ownerWalker) TopMost(ctx context.Context, pod *corev1.Pod) (*unstructured.Unstructured, error) {
-	ref := metav1.GetControllerOf(pod)
+func (w *ownerWalker) TopMost(ctx context.Context, obj metav1.Object) (*unstructured.Unstructured, error) {
+	ref := metav1.GetControllerOf(obj)
 	if ref == nil {
 		return nil, nil
 	}
-	return w.resolve(ctx, *ref, pod.Namespace)
+	return w.resolve(ctx, *ref, obj.GetNamespace())
 }
 
 func (w *ownerWalker) resolve(ctx context.Context, ref metav1.OwnerReference, namespace string) (*unstructured.Unstructured, error) {
