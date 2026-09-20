@@ -47,10 +47,7 @@ func (t *targets) withoutPods(found []Workload) []Workload {
 	if t.all {
 		return nil
 	}
-	has := make(map[workloadKey]bool, len(found))
-	for _, workload := range found {
-		has[workloadKey{groupKind: workload.GroupKind, namespace: workload.Namespace, name: workload.Name}] = true
-	}
+	has := keysOf(found)
 
 	var extra []Workload
 	for key, obj := range t.objects {

@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/cli-runtime/pkg/resource"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -38,8 +37,11 @@ type Options struct {
 
 	// Args is the positional TYPE[/NAME] argument, if there was one.
 	Args []string
-	// Filenames are -f manifests. They are read locally: a manifest that has
-	// not been applied has no pods and needs no cluster.
+	// Filenames are -f files, read locally and never from a cluster. They
+	// are read the way a namespace is, so a saved dump of pods, owners, and
+	// events reports what the cluster it came from did, and a manifest that
+	// has not been applied reports its template alone. See
+	// docs/adr/0003-a-set-of-f-files-is-read-as-one-cluster.md.
 	Filenames     []string
 	Selector      string
 	AllNamespaces bool
@@ -53,49 +55,9 @@ type Options struct {
 // pods are the primary source and the templates are secondary.
 func Collect(ctx context.Context, o Options) (*Result, error) {
 	if len(o.Filenames) > 0 {
-		return collectManifests(o)
+		return collectManifests(ctx, o)
 	}
 	return collectCluster(ctx, o)
-}
-
-// collectManifests reads workloads out of -f files without contacting a
-// cluster, so an unapplied manifest can be inspected before it is applied.
-func collectManifests(o Options) (*Result, error) {
-	defer traced("reading manifests")()
-
-	namespace, _, err := o.ConfigFlags.ToRawKubeConfigLoader().Namespace()
-	if err != nil {
-		return nil, err
-	}
-
-	infos, err := resource.NewBuilder(o.ConfigFlags).
-		Unstructured().
-		NamespaceParam(namespace).DefaultNamespace().
-		FilenameParam(false, &resource.FilenameOptions{Filenames: o.Filenames}).
-		Local().
-		Flatten().
-		ContinueOnError().
-		Do().Infos()
-	if err != nil {
-		return nil, err
-	}
-
-	result := &Result{}
-	for _, info := range infos {
-		obj, ok := info.Object.(*unstructured.Unstructured)
-		if !ok {
-			continue
-		}
-		workload, ok := workloadFrom(obj)
-		if !ok {
-			// A Service or a ConfigMap in the same file is not an error; it
-			// simply has no probes to report.
-			continue
-		}
-		result.Workloads = append(result.Workloads, workload)
-	}
-	sortWorkloads(result.Workloads)
-	return result, nil
 }
 
 func collectCluster(ctx context.Context, o Options) (*Result, error) {
@@ -283,23 +245,6 @@ func namespacesOf(items []owned) []string {
 		}
 	}
 	return namespaces
-}
-
-// workloadFrom turns an object the Builder returned into a workload with no
-// pods: what -f manifests and scaled-to-zero workloads have to offer.
-func workloadFrom(obj *unstructured.Unstructured) (Workload, bool) {
-	template, ok := PodTemplate(obj)
-	if !ok {
-		return Workload{}, false
-	}
-	gvk := obj.GroupVersionKind()
-	return Workload{
-		GroupKind: gvk.GroupKind(),
-		Name:      obj.GetName(),
-		Namespace: obj.GetNamespace(),
-		Owner:     obj,
-		Template:  template,
-	}, true
 }
 
 // traced reports how long a phase took at -v=2, where a slow run is usually
