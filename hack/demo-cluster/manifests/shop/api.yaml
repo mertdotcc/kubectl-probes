@@ -24,7 +24,9 @@ spec:
           containerPort: 9898
         env:
         - name: PODINFO_UI_MESSAGE
-          value: "shop api"
+          value: "BACKEND (shop/api) — shop/web calls this service. Reached directly here, so there is no second dot: nothing is behind it."
+        - name: PODINFO_UI_COLOR
+          value: "#3f6f3f"
         readinessProbe:
           httpGet:
             path: /readyz

@@ -29,7 +29,11 @@ spec:
         - name: PODINFO_BACKEND_URL
           value: http://api.shop.svc.cluster.local:9898/echo
         - name: PODINFO_UI_MESSAGE
-          value: "shop web — kubectl-probes demo cluster"
+          value: "FRONTEND (shop/web) — this page is served by a web pod, which calls shop/api for you. Dots below: top = this web pod, bottom = the api pod that answered it."
+        # A different colour from api, so you can tell at a glance which
+        # service you are looking at.
+        - name: PODINFO_UI_COLOR
+          value: "#34577c"
         startupProbe:
           httpGet:
             path: /healthz

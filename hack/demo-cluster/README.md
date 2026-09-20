@@ -115,6 +115,55 @@ kubectl port-forward -n shop svc/web 9898:9898            # localhost:9898
 kubectl port-forward -n observability svc/grafana 3000:3000
 ```
 
+### What you are looking at
+
+The `shop` and `api` pages are [podinfo](https://github.com/stefanprodan/podinfo),
+a small Go app built to be a test workload for Kubernetes — the same one the
+Flux and Linkerd tutorials use. It does nothing useful on purpose. What it has
+is real `/healthz` and `/readyz` endpoints, Prometheus metrics, the ability to
+call a backend and draw the chain, and built-in fault injection, which is what
+`make chaos` drives.
+
+The request path behind `http://shop.localtest.me:8080`:
+
+```
+  your browser
+      │  Host: shop.localtest.me
+      ▼
+  /etc/hosts  ──▶ 127.0.0.1
+      │
+      ▼
+  colima VM        forwards host :8080
+      │
+      ▼
+  kind node        probes-demo-control-plane, extraPortMapping 8080 ─▶ :80
+      │
+      ▼
+  ingress-nginx    routes on the Host header
+      │              shop.localtest.me    ─▶ Service shop/web
+      │              api.localtest.me     ─▶ Service shop/api
+      │              grafana.localtest.me ─▶ Service observability/grafana
+      ▼
+  Service shop/web ──balances──▶ one of 2 web pods
+                                      │  PODINFO_BACKEND_URL
+                                      ▼
+                                 Service shop/api ──▶ one of 2 api pods
+```
+
+On the page itself:
+
+| What you see | What it is |
+|---|---|
+| The purple cuttlefish | podinfo's logo. Decoration. |
+| The title line | `PODINFO_UI_MESSAGE`, set in `manifests/shop/web.yaml` |
+| **Served by `web-…-mb26x`** | Which of the two `web` pods answered. **Refresh and it changes** — that is the Service load-balancing |
+| Two green dots | The service chain. Top is the `web` pod, bottom is the `api` pod it called. Green means the hop answered |
+| PING, and the number on it | Sends another request down the chain, and counts how many you have sent |
+
+Open `http://api.localtest.me:8080` and you get a **green** page with **one**
+dot: you reached the backend directly, and nothing sits behind it. The colour
+and the message are the fastest way to tell which service you are on.
+
 ### Watching a probe do its job
 
 Open http://shop.localtest.me:8080, then in another terminal:
