@@ -4,9 +4,10 @@
   SPDX-License-Identifier: Apache-2.0
 
   The Dashboard's frame: a masthead saying whether the plugin is still
-  talking, the places a note goes, and an empty table the script fills from
-  whichever Report arrived last. Nothing here says anything about a cluster,
-  because nothing here has seen one.
+  talking, the places a note goes, an empty table the script fills from
+  whichever Report arrived last, and the empty Inspection it draws one
+  workload into. Nothing here says anything about a cluster, because nothing
+  here has seen one.
 
   The style and the script are files of their own. The policy this page is
   served under forbids both inline, and a Report carries text the cluster
@@ -34,11 +35,63 @@
 
       <section class="inspection" id="inspection" aria-labelledby="inspection-name" hidden>
         <div class="inspection-head">
-          <h2 id="inspection-name" class="mono"></h2>
+          <div class="inspection-title">
+            <h2 id="inspection-name" class="mono"></h2>
+            <p class="inspection-where mono" id="inspection-where"></p>
+          </div>
+          <p class="connection" id="inspection-connection" role="status">
+            <span class="dot" aria-hidden="true"></span>
+            <span id="inspection-connection-state">connecting</span>
+          </p>
           <button type="button" id="inspection-close">Back to the Overview</button>
         </div>
         <p class="inspection-note" id="inspection-note"></p>
-        <pre class="inspection-body mono" id="inspection-body"></pre>
+
+        <div class="inspection-body" id="inspection-body">
+          <!--
+            The drawing. The shapes are SVG so they scale and the labels are
+            HTML so they wrap and can be selected; the overlay on top of them
+            carries the one thing that travels, an Unhealthy event leaving the
+            kubelet that reported it.
+          -->
+          <div class="diagram">
+            <svg class="pulses" id="diagram-pulses" aria-hidden="true"></svg>
+            <div class="nodes" id="diagram-nodes"></div>
+          </div>
+
+          <ul class="legend" id="diagram-legend"></ul>
+
+          <section class="timeline" id="timeline" aria-labelledby="timeline-heading">
+            <div class="timeline-controls">
+              <h3 id="timeline-heading">Timeline</h3>
+              <button type="button" id="timeline-play" aria-pressed="false">Play</button>
+              <button type="button" id="timeline-live" aria-pressed="true">Live</button>
+              <label for="timeline-speed">Speed</label>
+              <select id="timeline-speed"></select>
+              <span class="timeline-clock mono" id="timeline-clock" role="status"></span>
+            </div>
+            <div class="timeline-strip">
+              <svg class="timeline-track" id="timeline-track"></svg>
+              <div class="timeline-lane" id="timeline-lane"></div>
+              <input
+                type="range"
+                class="timeline-scrub"
+                id="timeline-scrub"
+                min="0"
+                max="1000"
+                step="1"
+                value="1000"
+                aria-label="Scrub the Timeline"
+              />
+              <p class="timeline-span mono">
+                <span id="timeline-from"></span>
+                <span id="timeline-to"></span>
+              </p>
+            </div>
+          </section>
+
+          <div class="evidence-panel" id="inspection-evidence"></div>
+        </div>
       </section>
 
       <section class="overview" aria-labelledby="overview-heading">
