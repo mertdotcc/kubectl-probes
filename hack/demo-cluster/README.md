@@ -179,12 +179,18 @@ Open http://shop.localtest.me:8080, then in another terminal:
 make chaos
 ```
 
-`web`'s readiness probe starts failing. The pods keep running and the page
-keeps working — because two replicas never fail at exactly the same moment —
-but they leave the Service, and `kubectl probes -n shop deploy/web` reports
-readiness failures with no restarts. Meanwhile `catalog` is being restarted on
-a loop by its liveness probe. The contrast between those two is the thing
-worth seeing.
+Two different failures, and the contrast is the point.
+
+`catalog`'s liveness probe starts failing, so the kubelet restarts it on a
+loop: restart counts climb and the evidence names the liveness probe.
+
+`web` is the interesting one. Patching its readiness probe starts a rolling
+update, and the new pod never becomes ready — so **the rollout stalls**. The
+two old pods are still there and still serving, which means the page keeps
+working and nothing is restarted. From outside, `web` looks fine. The plugin
+shows `2/3` ready and marks the readiness column with `*`, meaning the running
+pods no longer match their own template. That is drift, and it is the failure
+people miss.
 
 ## When it goes wrong
 

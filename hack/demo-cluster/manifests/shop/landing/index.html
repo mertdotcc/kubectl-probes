@@ -149,9 +149,12 @@ kubectl probes -n shop deploy/web    <span style="color:var(--dim)"># one worklo
 <pre>make chaos    <span style="color:var(--dim)"># then reload this page and run kubectl probes again</span>
 make heal     <span style="color:var(--dim)"># put it back</span></pre>
   <p><code>catalog</code>'s liveness probe starts failing, so the kubelet restarts it on
-  a loop. <code>web</code>'s readiness probe starts failing, so its pods keep running and
-  quietly leave the Service instead. The second one is the failure people miss, and
-  telling the two apart is the point of the plugin.</p>
+  a loop — restart counts climb and the evidence names the probe.</p>
+  <p><code>web</code> is the sly one. Breaking its readiness probe starts a rolling
+  update whose new pod never becomes ready, so the rollout stalls and the old pods carry
+  on serving. This page keeps working, nothing restarts, and from outside the deployment
+  looks fine. The plugin reports <code>2/3</code> ready and marks the column with
+  <code>*</code>: the running pods no longer match their own template.</p>
 
   <footer>Served by nginx from a ConfigMap in <code>shop</code>.
   Source: <code>hack/demo-cluster/manifests/shop/landing/index.html</code></footer>
