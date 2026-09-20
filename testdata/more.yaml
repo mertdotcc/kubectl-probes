@@ -1,0 +1,52 @@
+# A second namespace, so -A has something to say, and a workload the rules
+# have an opinion about, so --sort severity has something to move.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  namespace: prod
+spec:
+  replicas: 3
+  serviceName: zookeeper
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+      - name: zookeeper
+        image: docker.io/library/zookeeper:3.9
+        ports:
+        - name: client
+          containerPort: 2181
+        livenessProbe:
+          tcpSocket:
+            port: client
+          periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge
+  namespace: staging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge
+  template:
+    metadata:
+      labels:
+        app: edge
+    spec:
+      containers:
+      - name: edge
+        image: registry.example.com/edge:0.2.0
+        readinessProbe:
+          exec:
+            command: ["/bin/sh", "-c", "test -f /tmp/ready"]
+          periodSeconds: 5
+          timeoutSeconds: 2

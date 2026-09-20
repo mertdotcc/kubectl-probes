@@ -1,0 +1,13 @@
+# Nothing here carries a pod template, which is not an error: there is simply
+# nothing with probes to report.
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: prod
+spec:
+  selector:
+    app: api
+  ports:
+  - port: 80
+    targetPort: http
