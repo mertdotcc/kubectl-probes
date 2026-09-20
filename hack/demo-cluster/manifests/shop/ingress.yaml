@@ -9,7 +9,20 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
+  # The front door is the explainer page, not podinfo: someone opening this
+  # cluster for the first time needs to be told what they are looking at
+  # before they are shown it.
   - host: shop.localtest.me
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: landing
+            port:
+              number: 80
+  - host: web.localtest.me
     http:
       paths:
       - path: /

@@ -6,7 +6,7 @@ KUBECTL      := kubectl --context kind-$(CLUSTER)
 INGRESS_REF  := controller-v1.11.2
 INGRESS_URL  := https://raw.githubusercontent.com/kubernetes/ingress-nginx/$(INGRESS_REF)/deploy/static/provider/kind/deploy.yaml
 REPO_ROOT    := $(shell git rev-parse --show-toplevel)
-HOSTNAMES    := shop.localtest.me api.localtest.me grafana.localtest.me prometheus.localtest.me
+HOSTNAMES    := shop.localtest.me web.localtest.me api.localtest.me grafana.localtest.me prometheus.localtest.me
 
 .DEFAULT_GOAL := help
 .PHONY: help up cluster ingress apply ready down stop start chaos heal probes build status urls hosts
@@ -61,8 +61,12 @@ status: ## What is actually running
 	$(KUBECTL) get pods -A -o wide
 
 hosts: ## Point the demo hostnames at 127.0.0.1 (needs sudo; for resolvers that block localtest.me)
-	@if grep -q "shop.localtest.me" /etc/hosts; then \
+	@if grep -qx "127.0.0.1 $(HOSTNAMES)" /etc/hosts; then \
 		echo "already in /etc/hosts"; \
+	elif grep -q "localtest.me" /etc/hosts; then \
+		sudo sed -i '' '/localtest\.me/d' /etc/hosts && \
+		echo "127.0.0.1 $(HOSTNAMES)" | sudo tee -a /etc/hosts >/dev/null && \
+		echo "refreshed (the hostname list changed)"; \
 	else \
 		echo "127.0.0.1 $(HOSTNAMES)" | sudo tee -a /etc/hosts >/dev/null && echo "added"; \
 	fi

@@ -63,7 +63,7 @@ make heal          # put them back
 
 ## What is in it
 
-Nine authored workloads, plus ingress-nginx, plus the nine or so kind brings
+Ten authored workloads, plus ingress-nginx, plus the nine or so kind brings
 with it — so `kubectl probes -A` has something to say.
 
 Probe configuration is deliberate. Each workload either demonstrates a rule or
@@ -72,6 +72,7 @@ code someone actually wrote rather than strawmen.
 
 | Workload | Kind | Findings | What it shows |
 |---|---|---|---|
+| `shop/landing` | Deployment | — | The explainer page, nginx. Probes done well: readiness and liveness on separate endpoints, every timeout written down |
 | `shop/web` | Deployment | — | Probes done well: a startup probe covers the slow boot, readiness and liveness ask different questions, every timeout written down |
 | `shop/api` | Deployment | 1 | `timeout-at-default` — careful config that never got a liveness timeout |
 | `shop/catalog` | Deployment | 2 | `no-readiness-probe`, `timeout-at-default` |
@@ -90,7 +91,8 @@ what `make chaos` is for.
 
 | | |
 |---|---|
-| http://shop.localtest.me:8080 | podinfo's UI, showing a live call through to `api` |
+| http://shop.localtest.me:8080 | **Start here.** A page explaining the cluster, the request path, and how to read the rest |
+| http://web.localtest.me:8080 | the frontend, podinfo, showing a live call through to `api` |
 | http://api.localtest.me:8080 | the backend on its own |
 | http://grafana.localtest.me:8080 | Grafana, anonymous access, Prometheus already wired up |
 | http://prometheus.localtest.me:8080 | Prometheus |
@@ -117,7 +119,12 @@ kubectl port-forward -n observability svc/grafana 3000:3000
 
 ### What you are looking at
 
-The `shop` and `api` pages are [podinfo](https://github.com/stefanprodan/podinfo),
+`shop.localtest.me` is a hand-written page that says all of this on screen —
+the request path, what each dot means, what to run next. It exists because
+podinfo's own UI has nowhere to put it: no way to label the dots or draw the
+path. If you only open one thing, open that.
+
+The `web` and `api` pages are [podinfo](https://github.com/stefanprodan/podinfo),
 a small Go app built to be a test workload for Kubernetes — the same one the
 Flux and Linkerd tutorials use. It does nothing useful on purpose. What it has
 is real `/healthz` and `/readyz` endpoints, Prometheus metrics, the ability to
