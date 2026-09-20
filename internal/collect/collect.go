@@ -61,6 +61,41 @@ func Collect(ctx context.Context, o Options) (*Result, error) {
 }
 
 func collectCluster(ctx context.Context, o Options) (*Result, error) {
+	config, err := restConfig(o)
+	if err != nil {
+		return nil, err
+	}
+	clients, err := newClients(config, o.ConfigFlags)
+	if err != nil {
+		return nil, err
+	}
+	scope, err := resolveScope(o)
+	if err != nil {
+		return nil, err
+	}
+	return collectFrom(ctx, clients.typed, newReducer(scope, clients.getObject))
+}
+
+// collectFrom is the read itself, kept apart from the clients it reads through
+// so that Watch drives the same reduction from an informer cache, and a test
+// drives it from a fake one.
+func collectFrom(ctx context.Context, client kubernetes.Interface, r *reducer) (*Result, error) {
+	pods, err := listPods(ctx, client, r.scope.namespace, r.scope.selector)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := r.reduce(ctx, pods)
+	if err != nil {
+		return nil, err
+	}
+
+	events := listEvents(ctx, client, namespacesOf(items), &r.gaps)
+	return r.result(items, events), nil
+}
+
+// restConfig is how both Collect and Watch talk to the API server.
+func restConfig(o Options) (*rest.Config, error) {
 	config, err := o.ConfigFlags.ToRESTConfig()
 	if err != nil {
 		return nil, err
@@ -73,58 +108,7 @@ func collectCluster(ctx context.Context, o Options) (*Result, error) {
 	// The plugin prints its own diagnostics, and a deprecation warning about
 	// an owner kind is not something a reader can act on.
 	config.WarningHandler = rest.NoWarnings{}
-
-	clients, err := newClients(config, o.ConfigFlags)
-	if err != nil {
-		return nil, err
-	}
-
-	namespace, _, err := o.ConfigFlags.ToRawKubeConfigLoader().Namespace()
-	if err != nil {
-		return nil, err
-	}
-	if o.AllNamespaces {
-		namespace = metav1.NamespaceAll
-	}
-
-	result := &Result{}
-
-	// What the user asked for, if anything. Resolving it first means a typo in
-	// the argument fails before a full pod list is paid for.
-	targets, err := resolveTargets(o, namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	pods, err := listPods(ctx, clients.typed, namespace, o.Selector)
-	if err != nil {
-		return nil, err
-	}
-
-	walker := newOwnerWalker(clients.getObject, &result.Gaps)
-	items := make([]owned, 0, len(pods))
-	start := time.Now()
-	for i := range pods {
-		pod := &pods[i]
-		owner, err := walker.TopMost(ctx, pod)
-		if err != nil {
-			return nil, err
-		}
-		if !targets.wants(pod, owner) {
-			continue
-		}
-		items = append(items, owned{pod: pod, owner: owner})
-	}
-	klog.V(2).Infof("resolved owners for %d pods in %v", len(pods), time.Since(start))
-
-	events := listEvents(ctx, clients.typed, namespacesOf(items), &result.Gaps)
-	result.Workloads = group(items, events)
-
-	// A workload the user named that has no pods is still worth a row: it is
-	// scaled to zero, and its template is the only thing there is to report.
-	result.Workloads = append(result.Workloads, targets.withoutPods(result.Workloads)...)
-	sortWorkloads(result.Workloads)
-	return result, nil
+	return config, nil
 }
 
 type clients struct {
@@ -172,10 +156,10 @@ func (c *clients) getObject(ctx context.Context, gvk schema.GroupVersionKind, na
 // listPods reads every pod in scope, a page at a time. resourceVersion=0 lets
 // the API server answer the first page from its cache, which is what makes a
 // large cluster bearable.
-func listPods(ctx context.Context, client kubernetes.Interface, namespace, selector string) ([]corev1.Pod, error) {
+func listPods(ctx context.Context, client kubernetes.Interface, namespace, selector string) ([]*corev1.Pod, error) {
 	defer traced("listing pods")()
 
-	var pods []corev1.Pod
+	var pods []*corev1.Pod
 	options := metav1.ListOptions{
 		LabelSelector:   selector,
 		Limit:           pageSize,
@@ -186,7 +170,9 @@ func listPods(ctx context.Context, client kubernetes.Interface, namespace, selec
 		if err != nil {
 			return nil, fmt.Errorf("listing pods: %w", err)
 		}
-		pods = append(pods, page.Items...)
+		for i := range page.Items {
+			pods = append(pods, &page.Items[i])
+		}
 		if page.Continue == "" {
 			return pods, nil
 		}
