@@ -18,5 +18,7 @@ The Dashboard is served by the same binary krew installs: `kubectl probes --serv
 - Watches, not polls: the server keeps informers on pods and events, rebuilds the Report on change, and coalesces bursts to a few hundred milliseconds so a rollout does not push a hundred snapshots a second.
 - The server keeps a bounded ring of snapshots, one hour, and replays it to a browser on connect. That ring is the observed part of the Timeline; the reconstructed part comes from the timestamps inside the first snapshot.
 - `--serve` with `-f` serves one static snapshot with configuration and schedule and nothing to animate, since a manifest has no runtime state.
-- The browser side is tested with chromedp behind the existing integration build tag, so the repo stays Go-only and CI needs no Node.
-- The Dashboard is part of what goreleaser builds and the krew archive carries. It is a v0.1.0 release gate, not a follow-up.
+- ~~The browser side is tested with chromedp behind the existing integration build tag, so the repo stays Go-only and CI needs no Node.~~
+  **Superseded by [ADR 0007](0007-the-released-plugin-is-the-cli-alone.md):** a browser in CI is a standing cost on every pull request for something the release does not contain. The Dashboard is covered by the Go tests around `internal/serve` and by running it against the demo cluster.
+- ~~The Dashboard is part of what goreleaser builds and the krew archive carries. It is a v0.1.0 release gate, not a follow-up.~~
+  **Superseded by [ADR 0007](0007-the-released-plugin-is-the-cli-alone.md):** the released plugin is the CLI alone and the Dashboard is built only behind the `dashboard` build tag. Everything else in this ADR, which is *how* the Dashboard is built, still holds.
