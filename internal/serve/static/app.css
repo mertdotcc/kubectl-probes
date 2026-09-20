@@ -1,0 +1,349 @@
+/* Copyright 2026 Mert Öztürk
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * The Dashboard's one stylesheet. Every colour is a custom property on :root
+ * so that the light scheme is a list of overrides rather than a second set of
+ * rules, and so that a reader can check the contrast of the whole palette in
+ * one place. Every status colour here clears 4.5:1 against both --bg and
+ * --surface in both schemes, and none of them is the only thing saying what
+ * it says: a drifted probe wears a star, an absent one a dash, and the
+ * connection says its state in words.
+ */
+
+:root {
+  color-scheme: dark light;
+
+  /* Dark is the default, as the essays this borrows its register from are. */
+  --bg: #101214;
+  --surface: #171a1d;
+  --line: #2a2e33;
+  --text: #e7e9ec;
+  --muted: #9ba3ab;
+  --accent: #74c0f5;
+  --danger: #f58a80;
+  --warn: #e3b341;
+  --ok: #6fcf8e;
+  --hover: #1e2226;
+  --selected: #232a31;
+  --flash: #22303f;
+
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius: 6px;
+  --highlight: 600ms;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #fafafb;
+    --surface: #ffffff;
+    --line: #e2e5e9;
+    --text: #14171a;
+    --muted: #5c646c;
+    --accent: #0a62ab;
+    --danger: #b42318;
+    --warn: #7a5200;
+    --ok: #15683a;
+    --hover: #f1f3f5;
+    --selected: #e8edf3;
+    --flash: #dbeafe;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 2rem 4rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* The masthead: what this is, and whether the plugin behind it is still
+ * talking. Nothing else belongs up here. */
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1rem;
+  padding: 2rem 0 1.5rem;
+}
+
+.masthead h1 {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.connection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.connection .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.connection[data-state="live"] .dot {
+  background: var(--ok);
+}
+
+.connection[data-state="reconnecting"] .dot {
+  background: var(--warn);
+}
+
+.connection[data-state="lost"] .dot {
+  background: var(--danger);
+}
+
+/* Notes are what the table cannot say for itself, in the CLI's own words and
+ * under the same conditions. They appear only when the table carries the mark
+ * they explain. */
+.notes:empty {
+  display: none;
+}
+
+.notes p {
+  margin: 0 0 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--muted);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.controls h2 {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+input[type="search"],
+button {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+input[type="search"] {
+  width: 22rem;
+  max-width: 100%;
+}
+
+input[type="search"]::placeholder {
+  color: var(--muted);
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--muted);
+}
+
+button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The Overview. The columns are the CLI's, in the CLI's order, and the cells
+ * hold what the CLI would have printed.
+ *
+ * Ten columns of identifiers do not fit a narrow window, and the answer is
+ * the table scrolling rather than the page: a reader who has scrolled down to
+ * a row should not have to scroll the whole page sideways to finish reading
+ * it. */
+.scroller {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+th,
+td {
+  padding: 0.45rem 0.85rem;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr:hover td {
+  background: var(--hover);
+}
+
+tbody tr[aria-selected="true"] td {
+  background: var(--selected);
+}
+
+tbody tr[aria-selected="true"] td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* The tones are the CLI's colours and mean the same things: a fact worth
+ * looking at is red, an opinion is yellow, and something nobody configured is
+ * gray. */
+td[data-tone="muted"] {
+  color: var(--muted);
+}
+
+td[data-tone="danger"] {
+  color: var(--danger);
+}
+
+td[data-tone="warn"] {
+  color: var(--warn);
+}
+
+.mark {
+  color: var(--danger);
+}
+
+/* A cell whose value changed is held up for a moment, because a Report
+ * arriving is the only warning a reader gets that anything moved. */
+td.changed {
+  animation: changed var(--highlight) ease-out;
+}
+
+@keyframes changed {
+  from {
+    background: var(--flash);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.empty {
+  margin: 0;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+}
+
+/* The Inspection, as far as this ticket takes it. The drawing is #35; this is
+ * the panel it will be drawn in. */
+.inspection {
+  padding: 1.25rem 1.5rem 1.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.inspection-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.inspection-head h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.inspection-note {
+  margin: 0.4rem 0 1rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.inspection-body {
+  max-height: 26rem;
+  margin: 0;
+  overflow: auto;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* Motion here is a highlight, never information. Somebody who has asked for
+ * less of it loses nothing by having none. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
