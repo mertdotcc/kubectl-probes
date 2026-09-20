@@ -119,6 +119,33 @@ readiness failures with no restarts. Meanwhile `catalog` is being restarted on
 a loop by its liveness probe. The contrast between those two is the thing
 worth seeing.
 
+## When it goes wrong
+
+**`failed calling webhook "validate.nginx.ingress.kubernetes.io" ... connection
+refused`** during `make up`.
+
+ingress-nginx's controller reports Ready from a probe on `:10254`, while its
+admission webhook listens on `:8443` and starts accepting later. So the pod is
+Ready, the admission Service has a ready endpoint, and an `Ingress` apply is
+still refused. No condition or event marks the moment `:8443` comes up, so
+`scripts/apply.sh` retries rather than waiting. If you hit this on an older
+checkout, or it exhausts its retries:
+
+```sh
+make apply       # safe to re-run, and the way to recover a half-applied cluster
+```
+
+Everything except the two Ingresses will already be running; `make apply` is
+idempotent and finishes the job.
+
+**`make up` fails because the cluster already exists.** `make up` is composed
+of `cluster`, `ingress`, `apply`, `ready`. Run whichever one you need rather
+than tearing down.
+
+**A platform or manifest error on the node image.** The image is pinned by
+digest. Drop to the plain tag in `kind.yaml` if your setup cannot resolve it:
+`image: kindest/node:v1.37.0`.
+
 ## Versions
 
 Pinned deliberately: nothing floats on `latest`, or output captured today

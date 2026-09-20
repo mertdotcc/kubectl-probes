@@ -8,26 +8,31 @@ INGRESS_URL  := https://raw.githubusercontent.com/kubernetes/ingress-nginx/$(ING
 REPO_ROOT    := $(shell git rev-parse --show-toplevel)
 
 .DEFAULT_GOAL := help
-.PHONY: help up down stop start chaos heal probes build status urls
+.PHONY: help up cluster ingress apply ready down stop start chaos heal probes build status urls
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  \033[36m%-8s\033[0m %s\n", $$1, $$2}'
 
-up: ## Create the cluster and everything in it
+up: cluster ingress apply ready urls ## Create the cluster and everything in it
+
+cluster: ## Just the kind cluster
 	kind create cluster --config kind.yaml
+
+ingress: ## Just ingress-nginx
 	@echo "==> ingress-nginx ($(INGRESS_REF))"
 	$(KUBECTL) apply -f $(INGRESS_URL)
-	@echo "==> waiting for the ingress admission webhook, or the Ingresses will not apply"
 	$(KUBECTL) wait --namespace ingress-nginx \
 		--for=condition=Ready pod \
 		--selector=app.kubernetes.io/component=controller \
 		--timeout=180s
-	@echo "==> workloads"
-	$(KUBECTL) apply -k manifests/
-	@echo "==> waiting for the shop to come up"
+
+apply: ## Just the workloads. Safe to re-run; this is how you recover a half-applied cluster
+	./scripts/apply.sh
+
+ready: ## Wait for the shop to come up
+	@echo "==> waiting for the shop"
 	-$(KUBECTL) wait --namespace shop --for=condition=Available deployment --all --timeout=300s
 	-$(KUBECTL) rollout status --namespace shop statefulset/postgres --timeout=300s
-	@$(MAKE) --no-print-directory urls
 
 down: ## Delete the cluster entirely
 	kind delete cluster --name $(CLUSTER)
