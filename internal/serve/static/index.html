@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<!--
+  Copyright 2026 Mert Öztürk
+  SPDX-License-Identifier: Apache-2.0
+
+  The Dashboard is not drawn yet. Until it is, this page is the proof that the
+  stream works: it prints whichever Report arrived last. The script is a file
+  of its own because the policy this page is served under forbids inline
+  script, and a Report carries text the cluster wrote.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>kubectl probes</title>
+  </head>
+  <body>
+    <h1>kubectl probes</h1>
+
+    <p id="status">Connecting to the stream…</p>
+
+    <dl>
+      <dt>Opening on</dt>
+      <dd id="initial">the Overview</dd>
+      <dt>Observed since</dt>
+      <dd id="started">…</dd>
+      <dt>Reports received</dt>
+      <dd id="received">0</dd>
+    </dl>
+
+    <pre id="report">Waiting for the first Report…</pre>
+
+    <script type="module" src="dashboard.js"></script>
+  </body>
+</html>

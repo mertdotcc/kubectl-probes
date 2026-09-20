@@ -8,11 +8,15 @@
 package main
 
 import (
+	"context"
+	"errors"
 	goflag "flag"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/fatih/color"
@@ -25,6 +29,7 @@ import (
 	"github.com/mertdotcc/kubectl-probes/internal/collect"
 	"github.com/mertdotcc/kubectl-probes/internal/model"
 	"github.com/mertdotcc/kubectl-probes/internal/render"
+	"github.com/mertdotcc/kubectl-probes/internal/serve"
 
 	// Authentication plugins so kubeconfigs pointing at GKE, EKS, AKS, and
 	// OIDC providers work the same way they do for kubectl itself.
@@ -57,6 +62,11 @@ const (
 	sortSeverity = "severity"
 )
 
+// serveDefaultAddr is where --serve binds when it is given no address: a free
+// port on loopback, because the Dashboard never authenticates. See
+// docs/adr/0006-the-dashboard-ships-inside-the-plugin-binary.md.
+const serveDefaultAddr = "127.0.0.1:0"
+
 var (
 	outputFormats = []string{outputTable, outputWide, outputJSON, outputYAML}
 	colorModes    = []string{colorAuto, colorAlways, colorNever}
@@ -75,10 +85,16 @@ type options struct {
 	color         string
 	sort          string
 	noFindings    bool
+	serve         string
 }
 
 func main() {
-	if err := newRootCmd().Execute(); err != nil {
+	// --serve runs until it is interrupted, so the command is given a context
+	// a signal can cancel. Every other run finishes long before it matters.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := newRootCmd().ExecuteContext(ctx); err != nil {
 		fmt.Fprintf(color.Error, "error: %v\n", err)
 		os.Exit(1)
 	}
@@ -105,7 +121,10 @@ The plugin only reads from the API server. It never exercises a probe.`,
   kubectl probes -A -o wide --no-findings
 
   # A manifest that has not been applied yet
-  kubectl probes -f deploy.yaml -o json`,
+  kubectl probes -f deploy.yaml -o json
+
+  # The Dashboard, in a browser, opened on one workload
+  kubectl probes deploy/api --serve`,
 		Args:          cobra.MaximumNArgs(1),
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -143,6 +162,12 @@ The plugin only reads from the API server. It never exercises a probe.`,
 		fmt.Sprintf("Order of the Overview rows, one of %s", strings.Join(sortOrders, "|")))
 	flags.BoolVar(&o.noFindings, "no-findings", false,
 		"Report facts only, without findings")
+	// The Dashboard is unauthenticated, so the address is the whole of its
+	// security and the help text is where that is said. An optional value
+	// keeps the bare --serve meaning the safe thing.
+	flags.StringVar(&o.serve, "serve", "",
+		"Serve the Dashboard on ADDR, by default a free port on loopback. It is unauthenticated, so an address off loopback hands the cluster's report to the network")
+	flags.Lookup("serve").NoOptDefVal = serveDefaultAddr
 	addKlogFlags(flags)
 
 	// Cobra names the command after the first word of Use, which is "kubectl"
@@ -157,21 +182,20 @@ The plugin only reads from the API server. It never exercises a probe.`,
 }
 
 // run is the whole plugin: read what the flags asked for, interpret it, and
-// print it. Nothing below decides anything about the cluster, so the same
-// cluster prints the same report twice in a row.
+// print it, or hand it to the Dashboard under --serve. Nothing below decides
+// anything about the cluster, so the same cluster reports the same twice in a
+// row.
 func (o *options) run(cmd *cobra.Command, args []string) error {
 	if err := o.validate(); err != nil {
 		return err
 	}
 	setupColor(o.color)
 
-	result, err := collect.Collect(cmd.Context(), collect.Options{
-		ConfigFlags:   o.configFlags,
-		Args:          args,
-		Filenames:     o.filenames,
-		Selector:      o.selector,
-		AllNamespaces: o.allNamespaces,
-	})
+	if o.serve != "" {
+		return o.runServe(cmd, args)
+	}
+
+	result, err := collect.Collect(cmd.Context(), o.collectOptions(args))
 	if err != nil {
 		return err
 	}
@@ -184,6 +208,72 @@ func (o *options) run(cmd *cobra.Command, args []string) error {
 	// color.Error directly. The root command already points them there, and
 	// taking them from here is what lets a test drive the command.
 	return o.write(cmd.OutOrStdout(), cmd.ErrOrStderr(), report, len(args) > 0)
+}
+
+// runServe is --serve: the same report, published to a browser and kept
+// current, instead of printed once. It returns when a signal cancels the
+// command's context, which is the only way a served run ends.
+func (o *options) runServe(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+
+	source, err := o.source(ctx, args)
+	if err != nil {
+		// A signal that arrived while the watch was still filling its caches
+		// is how the user asked to stop, not a failure to report.
+		if ctx.Err() != nil {
+			return nil
+		}
+		return err
+	}
+
+	// The command takes at most one positional, and it names the workload the
+	// Dashboard opens on.
+	var initial string
+	if len(args) > 0 {
+		initial = args[0]
+	}
+
+	return serve.Run(ctx, serve.Options{
+		Addr:    o.serve,
+		Initial: initial,
+		Analyze: o.analyzeOptions(),
+		Source:  source,
+		// The URL goes to stderr for the same reason every other note does:
+		// a run whose stdout was redirected still says where to look.
+		Out: cmd.ErrOrStderr(),
+	})
+}
+
+// source is where the Dashboard's Reports come from. A set of -f files is a
+// cluster as it was written down, so there is nothing in it to watch: it is
+// read once and served as it is. See ADR-0003.
+func (o *options) source(ctx context.Context, args []string) (serve.Source, error) {
+	if len(o.filenames) > 0 {
+		result, err := collect.Collect(ctx, o.collectOptions(args))
+		if err != nil {
+			return serve.Source{}, err
+		}
+		return serve.Snapshot(result), nil
+	}
+
+	results, err := collect.Watch(ctx, o.collectOptions(args))
+	if err != nil {
+		return serve.Source{}, err
+	}
+	return serve.Stream(results), nil
+}
+
+// collectOptions is what the flags mean to the collect package, shared by the
+// one read a printed run makes and the watch a served one keeps, so the two
+// can never disagree about which workloads they are about.
+func (o *options) collectOptions(args []string) collect.Options {
+	return collect.Options{
+		ConfigFlags:   o.configFlags,
+		Args:          args,
+		Filenames:     o.filenames,
+		Selector:      o.selector,
+		AllNamespaces: o.allNamespaces,
+	}
 }
 
 // write puts the report on the surface the flags asked for.
@@ -226,6 +316,11 @@ func (o *options) analyzeOptions() analyze.Options {
 func (o *options) validate() error {
 	if err := oneOf("--output", o.output, outputFormats); err != nil {
 		return err
+	}
+	// The Dashboard is a surface of its own, and it is the JSON encoding it
+	// serves. There is no run that is both a pipe and a browser.
+	if o.serve != "" && o.output != outputTable {
+		return errors.New("--serve cannot be combined with --output")
 	}
 	if err := oneOf("--color", o.color, colorModes); err != nil {
 		return err
