@@ -99,6 +99,22 @@ Or download the archive for your platform from
 build carries no version stamp, so it cannot tell you which one it is, and krew cannot
 upgrade it.
 
+## Trying it on a real cluster
+
+This project's supported local environment is [kind](https://kind.sigs.k8s.io/), and
+[`hack/demo-cluster/`](hack/demo-cluster/) ships one: three nodes, a small system running
+on them, and probe configuration chosen so every rule has something to fire on.
+
+```sh
+cd hack/demo-cluster
+make up
+make probes
+```
+
+`kubectl` and `kind` are the only tools it needs. The output in this README comes from
+that cluster, so what you see is what it prints. `make chaos` breaks probes on purpose
+when you want failure evidence to look at.
+
 ## Flags
 
 - `-A`, `--all-namespaces` — every namespace, with a `NAMESPACE` column.
