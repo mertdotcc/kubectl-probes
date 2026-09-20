@@ -95,9 +95,20 @@ what `make chaos` is for.
 | http://grafana.localtest.me:8080 | Grafana, anonymous access, Prometheus already wired up |
 | http://prometheus.localtest.me:8080 | Prometheus |
 
-`localtest.me` is public DNS that resolves to `127.0.0.1`, so none of this
-needs `/etc/hosts` editing. It is third-party DNS though, so if your resolver
-will not answer for it — offline, or behind DNS filtering — skip ingress:
+`localtest.me` is public DNS that resolves to `127.0.0.1`, so in principle
+none of this needs `/etc/hosts` editing.
+
+In practice, **many home routers block it.** DNS rebinding protection refuses
+any answer pointing at a loopback or private address, and it is on by default
+on Fritz!Box and others. The symptom is `dig +short shop.localtest.me`
+returning nothing, and `nip.io` and `sslip.io` failing the same way. If that
+is you:
+
+```sh
+make hosts       # adds the four hostnames to /etc/hosts, once, with sudo
+```
+
+Or skip ingress entirely:
 
 ```sh
 kubectl port-forward -n shop svc/web 9898:9898            # localhost:9898
@@ -141,6 +152,16 @@ idempotent and finishes the job.
 **`make up` fails because the cluster already exists.** `make up` is composed
 of `cluster`, `ingress`, `apply`, `ready`. Run whichever one you need rather
 than tearing down.
+
+**The browser cannot reach `shop.localtest.me` but the cluster looks fine.**
+DNS, not Kubernetes. Check with:
+
+```sh
+curl -H "Host: shop.localtest.me" http://localhost:8080/
+```
+
+A 200 there means everything works and only name resolution is missing — run
+`make hosts`. See the browser section above.
 
 **A platform or manifest error on the node image.** The image is pinned by
 digest. Drop to the plain tag in `kind.yaml` if your setup cannot resolve it:
