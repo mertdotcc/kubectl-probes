@@ -630,6 +630,10 @@ td.changed {
   stroke: var(--danger);
 }
 
+.chip .mark:empty {
+  display: none;
+}
+
 .chip .restarts {
   padding: 0 0.25rem;
   border-radius: 999px;
@@ -929,8 +933,12 @@ select {
   fill: var(--accent);
 }
 
-.timeline-track line {
-  stroke: var(--line);
+/* The hatching has to be the thing a reader notices about the reconstructed
+ * half, so it is drawn in the text colour rather than in the line colour: a
+ * pattern nobody can see is a half nobody can tell apart. */
+.timeline-track #hatch line {
+  stroke: var(--muted);
+  stroke-opacity: 0.55;
 }
 
 .timeline-lane {

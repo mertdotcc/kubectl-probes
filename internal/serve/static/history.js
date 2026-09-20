@@ -266,6 +266,7 @@ export function shapeOf(workload) {
       pods.get(pod.name).containers.push({
         name: container.name,
         sidecar: container.sidecar === true,
+        drifted: drifted(container),
         ready: pod.ready === true,
         started: pod.started,
         restarts: pod.restarts ?? 0,
@@ -306,6 +307,7 @@ function templateShape(workload) {
   const containers = (workload?.containers ?? []).map((container) => ({
     name: container.name,
     sidecar: container.sidecar === true,
+    drifted: drifted(container),
     ready: false,
     started: undefined,
     restarts: 0,
@@ -322,6 +324,13 @@ function templateShape(workload) {
       pods: [{ name: TEMPLATE, template: true, node: TEMPLATE, conditions: [], containers }],
     },
   ];
+}
+
+// drifted reports whether any of a container's probes is configured one way in
+// the running pod and another in the workload template, which the Overview
+// marks with a star and the drawing marks the same way.
+function drifted(container) {
+  return ["startup", "readiness", "liveness"].some((probe) => container[probe]?.drifted === true);
 }
 
 // probesOf is the container's three probes in the order every surface presents

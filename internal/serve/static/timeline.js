@@ -115,8 +115,13 @@ export function newTimeline({ root, lane, track, scrub, play, follow, speed, clo
 
     // reset is a different workload, which is a different history: nothing
     // that has been played is about this one.
+    //
+    // It stops the clock without drawing. Whatever is on screen belongs to the
+    // workload being left, and the update that follows is the one that knows
+    // what replaces it.
     reset() {
-      pause();
+      state.playing = false;
+      cancelAnimationFrame(frame);
       state.primed = false;
       state.fired = new Set();
       state.live = true;
@@ -159,20 +164,25 @@ export function newTimeline({ root, lane, track, scrub, play, follow, speed, clo
       state.fired = new Set(
         state.entries.filter((entry) => entry.at <= state.at).map((entry) => entry.key),
       );
-    } else {
-      for (const entry of state.entries) {
-        if (entry.at > state.at || state.fired.has(entry.key)) {
-          continue;
-        }
-        state.fired.add(entry.key);
-        // An entry older than where the clock already was is one that has
-        // only just been reported; it is still news, and it is played.
-        if (entry.at > was || state.live) {
-          fire(entry);
-        }
+      draw();
+      return;
+    }
+
+    // The picture first, then what moved to get to it. An animation is about
+    // a chip, and the chip of a pod that has only just arrived is not on the
+    // drawing until the drawing has been brought up to this moment.
+    draw();
+    for (const entry of state.entries) {
+      if (entry.at > state.at || state.fired.has(entry.key)) {
+        continue;
+      }
+      state.fired.add(entry.key);
+      // An entry older than where the clock already was is one that has only
+      // just been reported; it is still news, and it is played.
+      if (entry.at > was || state.live) {
+        fire(entry);
       }
     }
-    draw();
   }
 
   function fire(entry) {

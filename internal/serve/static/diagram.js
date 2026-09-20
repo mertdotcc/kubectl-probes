@@ -17,6 +17,7 @@
 // it.
 
 import { READY, TEMPLATE, UNKNOWN, UNREADY, UNSTARTED, UNSCHEDULED } from "./history.js";
+import { DRIFT_MARK, DRIFT_NOTE } from "./overview.js";
 import {
   DEFAULT_PERIOD_SECONDS,
   durationMs,
@@ -128,6 +129,15 @@ function drawNodes(host, state, drawn, pods, selected) {
     const after = cursor.nextElementSibling;
     cursor.remove();
     cursor = after;
+  }
+
+  // A node that went took its pods' elements with it, and a workload that was
+  // swapped for another took all of them. What is no longer in the page is no
+  // longer a pod this drawing can flash.
+  for (const [name, element] of pods) {
+    if (!element.isConnected) {
+      pods.delete(name);
+    }
   }
   return next;
 }
@@ -330,6 +340,9 @@ function newChip(container) {
   chip.append(
     glyph(),
     label("chip-name mono", container.name + (container.sidecar ? " (sidecar)" : "")),
+    // The drift star, kept apart from the name because only the star is
+    // coloured, exactly as the terminal colours only the star.
+    label("mark", ""),
     label("restarts", ""),
     label("sr", ""),
   );
@@ -349,6 +362,10 @@ function glyph() {
 function fillChip(chip, container) {
   chip.dataset.state = container.state;
   chip.title = `${container.name}: ${chipWords[container.state]}`;
+
+  const mark = chip.querySelector(".mark");
+  mark.textContent = container.drifted ? DRIFT_MARK : "";
+  mark.title = container.drifted ? DRIFT_NOTE : "";
 
   const restarts = chip.querySelector(".restarts");
   restarts.textContent = container.restarts > 0 ? String(container.restarts) : "";

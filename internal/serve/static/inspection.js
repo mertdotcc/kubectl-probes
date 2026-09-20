@@ -85,6 +85,10 @@ export function newInspection({ panel, onClose }) {
   // drawn names the moment last drawn, so sixty frames a second of playback
   // redraw the diagram only when the picture actually changes.
   let drawn = "";
+  // shown says the panel was on screen last time. A panel that was not has an
+  // hour of the cluster's news waiting for it, and playing all of it at once
+  // is not news.
+  let shown = false;
 
   const diagram = newDiagram({
     host: panel.querySelector("#diagram-nodes"),
@@ -114,17 +118,20 @@ export function newInspection({ panel, onClose }) {
   return function draw({ reports: held, startedAt: began, still, selected: wanted, connection }) {
     panel.hidden = wanted === "";
     if (panel.hidden) {
+      shown = false;
       return;
     }
 
-    if (wanted !== selected) {
-      // A different workload is a different history. Nothing that has been
-      // played is about this one, and no pod of the last one is open.
+    if (wanted !== selected || !shown) {
+      // A different workload is a different history, and a panel being opened
+      // is a history nobody has been watching. Nothing that has been played is
+      // about this one, and no pod of the last one is open.
       selected = wanted;
       pod = "";
       drawn = "";
       timeline.reset();
     }
+    shown = true;
     reports = held;
     startedAt = began;
 
