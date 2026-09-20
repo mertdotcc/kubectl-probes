@@ -1,0 +1,38 @@
+sts/db -n prod
+2 pods
+
+container db
+  Configuration
+    startup    -
+    readiness  exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1
+      initialDelaySeconds            0   (default)
+      periodSeconds                  10
+      timeoutSeconds                 1   (default)
+      successThreshold               1   (default)
+      failureThreshold               3
+      terminationGracePeriodSeconds  -   (the pod's own)
+    liveness   tcp :5432
+      initialDelaySeconds            0   (default)
+      periodSeconds                  5
+      timeoutSeconds                 1   (default)
+      successThreshold               1   (default)
+      failureThreshold               2
+      terminationGracePeriodSeconds  -   (the pod's own)
+  Effective timing
+    Readiness acts after 3 consecutive failures, at worst 30s after the container stops responding.
+    Liveness acts after 2 consecutive failures, at worst 10s after the container stops responding.
+  Runtime state
+    POD   READY  STARTED  RESTARTS  LAST TERMINATION                     POD-READY        CONTAINERS-READY
+    db-0  false  true     7         Error, exit 137, signal 9, 8m2s ago  False (28m ago)  False (28m ago)
+    db-1  true   true     0         -                                    True (37h ago)   True (37h ago)
+  Failure evidence
+    POD   PROBE      FAILURES  FIRST SEEN  LAST SEEN
+    db-0  readiness  9         28m ago     110s ago
+      Readiness probe failed: /bin/sh: pg_isready: connection to server at "127.0.0.1", port 5432 failed: Connection refused
+    db-0  liveness   4         15m ago     8m8s ago
+      Liveness probe failed: dial tcp 10.44.2.17:5432: connect: connection refused
+  Findings
+    liveness-faster-than-readiness  Liveness detects failure in 10s and readiness in 30s, so a failing container is restarted before it is taken out of service.
+    timeout-at-default              The readiness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing.
+    timeout-at-default              The liveness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing.
+    probe-failures-recent           The cluster reports 13 recent Unhealthy events for the readiness and liveness probes, so this is failing now and not only on paper.

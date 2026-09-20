@@ -1,0 +1,30 @@
+# A ReplicaSet on its own. A ReplicaSet beside its Deployment is part of that
+# Deployment, but this file is all there is, so it is the workload.
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: legacy-6f4b9c
+  namespace: prod
+  ownerReferences:
+  - apiVersion: apps/v1
+    kind: Deployment
+    name: legacy
+    uid: 00000000-0000-0000-0000-000000000070
+    controller: true
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy
+  template:
+    metadata:
+      labels:
+        app: legacy
+    spec:
+      containers:
+      - name: legacy
+        image: registry.example.com/legacy:1.0.0
+        livenessProbe:
+          tcpSocket:
+            port: 8080
+          periodSeconds: 10
