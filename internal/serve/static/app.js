@@ -12,7 +12,7 @@ import { newTable } from "./table.js";
 
 // timelineWindow is how far back the Reports kept here reach: the server's
 // own ring window, because that is as far back as it will replay. It is the
-// observed part of the Timeline, which #35 draws.
+// observed part of the Timeline.
 const timelineWindow = 60 * 60 * 1000;
 
 // What the connection indicator says, in a word, and the sentence behind it.
@@ -37,6 +37,13 @@ const state = {
   // oldest first. latest is the one being drawn.
   reports: [],
   latest: null,
+  // startedAt is when this run of the plugin began serving, which is where
+  // the observed part of the Timeline starts and the reconstructed part ends.
+  startedAt: 0,
+  // still records a run that will never send another Report, which is what a
+  // set of -f files is: there is nothing to animate and no Timeline to play.
+  still: false,
+  connection: "connecting",
   // initial is the workload --serve was given to open on, until it has been
   // opened on or found not to name one.
   initial: "",
@@ -58,10 +65,6 @@ const drawTable = newTable({
 
 const drawInspection = newInspection({
   panel: document.querySelector("#inspection"),
-  name: document.querySelector("#inspection-name"),
-  note: document.querySelector("#inspection-note"),
-  body: document.querySelector("#inspection-body"),
-  close: document.querySelector("#inspection-close"),
   onClose: () => show(""),
 });
 
@@ -95,6 +98,12 @@ async function connect() {
   try {
     const meta = await (await fetch("/api/meta")).json();
     state.initial = meta.initial ?? "";
+    // A run with no startedAt is a run nothing can be dated against, so
+    // everything before the first Report is treated as reconstructed. Claiming
+    // less than is known is the only safe way to be wrong about this.
+    const began = Date.parse(meta.startedAt);
+    state.startedAt = Number.isNaN(began) ? Number.POSITIVE_INFINITY : began;
+    state.still = meta.static === true;
     if (!meta.static) {
       listen();
       return;
@@ -191,10 +200,18 @@ function selectedInHash() {
   }
 }
 
+// say is what the masthead reports about the plugin behind the page. The
+// Inspection carries the same indicator, because a reader watching one
+// workload should not have to look away from it to see that the plugin has
+// stopped answering, so a change here is a redraw.
 function say(connection) {
   elements.connection.dataset.state = connection;
   elements.connection.title = connections[connection];
   elements.connectionState.textContent = connection;
+  if (state.connection !== connection) {
+    state.connection = connection;
+    draw();
+  }
 }
 
 function draw() {
@@ -204,7 +221,13 @@ function draw() {
 
   drawNotes(overview.notesFor(rows));
   drawTable({ rows, namespaced, selected: state.selected, note: emptyNote(all, rows) });
-  drawInspection(state.latest, state.selected);
+  drawInspection({
+    reports: state.reports,
+    startedAt: state.startedAt,
+    still: state.still,
+    selected: state.selected,
+    connection: { state: state.connection, said: connections[state.connection] },
+  });
 }
 
 // emptyNote is what stands where the table would have been. A Report with no

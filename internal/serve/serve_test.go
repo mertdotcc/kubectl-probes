@@ -391,6 +391,7 @@ var contentTypes = map[string]string{
 var (
 	referenced = regexp.MustCompile(`(?:src|href)="([^"]+)"`)
 	imported   = regexp.MustCompile(`(?m)^import[^"\']*["\']\./([^"\']+)["\']`)
+	queried    = regexp.MustCompile(`querySelector\("#([^"]+)"\)`)
 )
 
 // The Dashboard is one binary, which means every file the page pulls in is
@@ -437,6 +438,29 @@ func TestEveryAssetThePageLoadsIsServed(t *testing.T) {
 			t.Errorf("%s is served empty", asset)
 		}
 		pending = append(pending, imports(body)...)
+	}
+}
+
+// The Inspection finds its own parts inside the panel rather than being handed
+// them, because it is one section with a dozen of them. That makes an id
+// renamed in the markup and not in the script a panel that half draws, in the
+// browser, where no Go test would be looking. Matching the two here is what
+// notices.
+func TestThePageCarriesEveryElementTheScriptLooksFor(t *testing.T) {
+	_, url := serving(t, Options{Source: Snapshot(reported("api"))})
+	_, page := get(t, url+"/")
+
+	for _, module := range []string{"app.js", "inspection.js"} {
+		_, body := get(t, url+"/"+module)
+		wanted := queried.FindAllStringSubmatch(body, -1)
+		if len(wanted) == 0 {
+			t.Errorf("%s looks nothing up in the page", module)
+		}
+		for _, match := range wanted {
+			if !strings.Contains(page, `id="`+match[1]+`"`) {
+				t.Errorf("%s looks for #%s, which the page does not carry", module, match[1])
+			}
+		}
 	}
 }
 
