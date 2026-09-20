@@ -93,6 +93,7 @@
           "pods": [
             {
               "name": "api-6c48b59d7-lm4pq",
+              "node": "worker-2",
               "ready": true,
               "started": true,
               "conditions": [
@@ -110,6 +111,7 @@
             },
             {
               "name": "api-7d9f4c6b8-2xk9v",
+              "node": "worker-1",
               "ready": true,
               "started": true,
               "conditions": [
@@ -210,6 +212,7 @@
           "pods": [
             {
               "name": "checkout-84bd6f7c5-p9v2c",
+              "node": "worker-3",
               "ready": true,
               "started": true,
               "conditions": [
@@ -289,6 +292,7 @@
           "pods": [
             {
               "name": "db-0",
+              "node": "worker-1",
               "started": true,
               "restarts": 7,
               "lastTermination": {
@@ -328,6 +332,7 @@
             },
             {
               "name": "db-1",
+              "node": "worker-2",
               "ready": true,
               "started": true,
               "conditions": [
@@ -383,6 +388,7 @@
           "pods": [
             {
               "name": "debug",
+              "node": "worker-1",
               "ready": true,
               "started": true,
               "conditions": [
@@ -428,6 +434,7 @@
           "pods": [
             {
               "name": "import-4k2wq",
+              "node": "worker-1",
               "ready": true,
               "started": true,
               "conditions": [
@@ -493,6 +500,7 @@
           "pods": [
             {
               "name": "nightly-29281440-hh8tn",
+              "node": "worker-2",
               "ready": true,
               "started": true,
               "conditions": [
@@ -577,6 +585,7 @@
           "pods": [
             {
               "name": "web-5f8c2d941-ffz2r",
+              "node": "worker-3",
               "ready": true,
               "started": true,
               "conditions": [
@@ -662,6 +671,7 @@
           "pods": [
             {
               "name": "web-5f8c2d941-ffz2r",
+              "node": "worker-3",
               "ready": true,
               "started": true,
               "restarts": 1,

@@ -29,7 +29,11 @@ var probeMessages = map[string]model.ProbeType{
 // events the container has, which the workload's failure count sums.
 func podState(pod collect.Pod, container string) (model.Pod, int32) {
 	state := model.Pod{
-		Name:       pod.Pod.Name,
+		Name: pod.Pod.Name,
+		// The node is what the kubelet that runs these probes is called. A pod
+		// read from a manifest has none, and neither has one still waiting to
+		// be scheduled.
+		Node:       pod.Pod.Spec.NodeName,
 		Conditions: conditionsOf(pod.Pod),
 	}
 	if status := containerStatus(pod.Pod, container); status != nil {

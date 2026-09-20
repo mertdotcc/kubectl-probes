@@ -98,6 +98,7 @@
           "pods": [
             {
               "name": "api-7d9f4c8b6d-2xk9v",
+              "node": "worker-1",
               "ready": true,
               "started": true,
               "conditions": [
@@ -115,6 +116,7 @@
             },
             {
               "name": "api-7d9f4c8b6d-9wq4t",
+              "node": "worker-2",
               "started": true,
               "restarts": 4,
               "lastTermination": {
@@ -183,11 +185,13 @@
           "pods": [
             {
               "name": "api-7d9f4c8b6d-2xk9v",
+              "node": "worker-1",
               "ready": true,
               "started": true
             },
             {
               "name": "api-7d9f4c8b6d-9wq4t",
+              "node": "worker-2",
               "ready": true,
               "started": true
             }
@@ -272,10 +276,12 @@
           "pods": [
             {
               "name": "checkout-64c6f8d5b9-ltz7p",
+              "node": "worker-1",
               "ready": true
             },
             {
               "name": "checkout-64c6f8d5b9-v8rn2",
+              "node": "worker-3",
               "ready": true
             }
           ]

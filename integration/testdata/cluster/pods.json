@@ -46,7 +46,8 @@
               "failureThreshold": 3
             }
           }
-        ]
+        ],
+        "nodeName": "worker-1"
       },
       "status": {
         "phase": "Running",
@@ -110,7 +111,8 @@
               "failureThreshold": 3
             }
           }
-        ]
+        ],
+        "nodeName": "worker-2"
       },
       "status": {
         "phase": "Running",
@@ -176,7 +178,8 @@
               "failureThreshold": 3
             }
           }
-        ]
+        ],
+        "nodeName": "worker-3"
       },
       "status": {
         "phase": "Running",
@@ -233,7 +236,8 @@
               "failureThreshold": 2
             }
           }
-        ]
+        ],
+        "nodeName": "worker-1"
       },
       "status": {
         "phase": "Running",
@@ -299,7 +303,8 @@
               "failureThreshold": 2
             }
           }
-        ]
+        ],
+        "nodeName": "worker-2"
       },
       "status": {
         "phase": "Running",
@@ -382,7 +387,8 @@
               "failureThreshold": 3
             }
           }
-        ]
+        ],
+        "nodeName": "worker-3"
       },
       "status": {
         "phase": "Running",
@@ -456,7 +462,8 @@
             "image": "registry.example.com/import:0.4.1",
             "command": ["/import", "--source", "s3://bucket/dump"]
           }
-        ]
+        ],
+        "nodeName": "worker-1"
       },
       "status": {
         "phase": "Running",
@@ -509,7 +516,8 @@
               "failureThreshold": 3
             }
           }
-        ]
+        ],
+        "nodeName": "worker-2"
       },
       "status": {
         "phase": "Running",
@@ -562,7 +570,8 @@
               "failureThreshold": 3
             }
           }
-        ]
+        ],
+        "nodeName": "worker-3"
       },
       "status": {
         "phase": "Running",
@@ -599,7 +608,8 @@
             "image": "docker.io/library/alpine:3.20",
             "command": ["sleep", "infinity"]
           }
-        ]
+        ],
+        "nodeName": "worker-1"
       },
       "status": {
         "phase": "Running",

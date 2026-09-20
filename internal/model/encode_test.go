@@ -193,6 +193,7 @@ func sampleReport() *Report {
 					Pods: []Pod{
 						{
 							Name:    "api-7d9f4c8b6d-2xk9v",
+							Node:    "worker-1",
 							Ready:   true,
 							Started: ptr.To(true),
 							Conditions: []Condition{
@@ -202,6 +203,7 @@ func sampleReport() *Report {
 						},
 						{
 							Name:     "api-7d9f4c8b6d-9wq4t",
+							Node:     "worker-2",
 							Started:  ptr.To(true),
 							Restarts: 4,
 							LastTermination: &Termination{
@@ -252,8 +254,8 @@ func sampleReport() *Report {
 					},
 					Runtime: &Runtime{Ready: 2, Total: 2, Failures: ptr.To[int32](0)},
 					Pods: []Pod{
-						{Name: "api-7d9f4c8b6d-2xk9v", Ready: true, Started: ptr.To(true)},
-						{Name: "api-7d9f4c8b6d-9wq4t", Ready: true, Started: ptr.To(true)},
+						{Name: "api-7d9f4c8b6d-2xk9v", Node: "worker-1", Ready: true, Started: ptr.To(true)},
+						{Name: "api-7d9f4c8b6d-9wq4t", Node: "worker-2", Ready: true, Started: ptr.To(true)},
 					},
 				},
 			},
@@ -323,8 +325,8 @@ func sampleReport() *Report {
 					},
 					Runtime: &Runtime{Ready: 2, Total: 2},
 					Pods: []Pod{
-						{Name: "checkout-64c6f8d5b9-ltz7p", Ready: true},
-						{Name: "checkout-64c6f8d5b9-v8rn2", Ready: true},
+						{Name: "checkout-64c6f8d5b9-ltz7p", Node: "worker-1", Ready: true},
+						{Name: "checkout-64c6f8d5b9-v8rn2", Node: "worker-3", Ready: true},
 					},
 				},
 			},

@@ -41,6 +41,7 @@ workloads:
         status: "True"
         type: ContainersReady
       name: api-7d9f4c8b6d-2xk9v
+      node: worker-1
       ready: true
       started: true
     - conditions:
@@ -62,6 +63,7 @@ workloads:
         reason: Error
         signal: 9
       name: api-7d9f4c8b6d-9wq4t
+      node: worker-2
       restarts: 4
       started: true
     readiness:
@@ -105,9 +107,11 @@ workloads:
   - name: istio-proxy
     pods:
     - name: api-7d9f4c8b6d-2xk9v
+      node: worker-1
       ready: true
       started: true
     - name: api-7d9f4c8b6d-9wq4t
+      node: worker-2
       ready: true
       started: true
     readiness:
@@ -173,8 +177,10 @@ workloads:
   - name: checkout
     pods:
     - name: checkout-64c6f8d5b9-ltz7p
+      node: worker-1
       ready: true
     - name: checkout-64c6f8d5b9-v8rn2
+      node: worker-3
       ready: true
     readiness:
       config:
