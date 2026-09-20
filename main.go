@@ -128,8 +128,11 @@ The plugin only reads from the API server. It never exercises a probe.`,
 	o.configFlags.AddFlags(flags)
 	flags.BoolVarP(&o.allNamespaces, "all-namespaces", "A", false,
 		"Show workloads in every namespace")
+	// The selector reaches the pod list, so it is pod labels it is matched
+	// against and not the labels on the Deployment above them. Saying so here
+	// is the difference between finding nothing and knowing why.
 	flags.StringVarP(&o.selector, "selector", "l", "",
-		"Label selector to filter workloads by")
+		"Label selector, matched against pod labels")
 	flags.StringSliceVarP(&o.filenames, "filename", "f", nil,
 		"Read workloads from a manifest instead of the cluster")
 	flags.StringVarP(&o.output, "output", "o", outputTable,
