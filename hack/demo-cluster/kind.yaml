@@ -3,27 +3,25 @@
 # Two workers rather than one because a DaemonSet on a single-node cluster
 # looks exactly like a Deployment, and because a probe failing on one node and
 # not the other is a thing worth being able to see.
+#
+# Every node pins the same node image, so the cluster rebuilt in six months is
+# the cluster built today. Without a pin the Kubernetes version is a side
+# effect of whichever kind the person running it happens to have installed.
+# This is kind v0.33.0's own default, digest and all; to move it, read the tag
+# off `make up`:
+#
+#   ✓ Ensuring node image (kindest/node:v1.37.0)
+#
+# Kubernetes 1.37 is what makes the event-ttl patch valid v1beta4, and what
+# puts sidecars — init containers with restartPolicy: Always, which this
+# plugin treats as in scope — on a release where they are GA.
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: probes-demo
 
-# Pin this so the cluster you rebuild in six months is the cluster you built
-# today. `make up` prints the image it chose:
-#
-#   ✓ Ensuring node image (kindest/node:v1.31.0)
-#
-# Copy that tag here and uncomment. Left unpinned by default because the
-# default always matches your installed kind, while a tag that kind does not
-# know fails at create time.
-#
-# It matters for more than tidiness here: sidecars (init containers with
-# restartPolicy: Always) are in scope for this plugin, and they are only GA on
-# recent Kubernetes. The node image decides whether that path is reachable.
-#
-# image: kindest/node:v1.31.0
-
 nodes:
 - role: control-plane
+  image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
   kubeadmConfigPatches:
   # ingress-nginx's kind manifest schedules onto the node carrying this label.
   - |
@@ -36,8 +34,8 @@ nodes:
   # throws them away after an hour by default. A day means evidence generated
   # before lunch is still there after it.
   #
-  # kubeadm v1beta4 syntax (Kubernetes 1.31+). On an older node image
-  # extraArgs is a map instead:  extraArgs: {event-ttl: "24h"}
+  # kubeadm v1beta4 syntax, which the pinned node image is new enough for. On
+  # an older image extraArgs is a map instead: {event-ttl: "24h"}
   - |
     kind: ClusterConfiguration
     apiServer:
@@ -53,4 +51,6 @@ nodes:
     hostPort: 8443
     protocol: TCP
 - role: worker
+  image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
 - role: worker
+  image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5

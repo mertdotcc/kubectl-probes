@@ -133,10 +133,12 @@ stops matching what a reader gets tomorrow.
 | Grafana | `grafana/grafana:11.2.0` |
 | node-exporter | `prom/node-exporter:v1.8.2` |
 | ingress-nginx | `controller-v1.11.2` (`INGRESS_REF` in the Makefile) |
-| Kubernetes | whatever your kind ships with, until you pin it in `kind.yaml` |
+| Kubernetes | `kindest/node:v1.37.0`, pinned by digest in `kind.yaml` |
+| kind | v0.33.0 (the version whose default node image is pinned above) |
 
-The Kubernetes version is the one loose end. Run `kind version`, then
-uncomment and set `image:` in `kind.yaml` so rebuilds stay identical.
+The node image is pinned by digest, so the Kubernetes version does not drift
+with whichever kind you happen to have installed. To move it, read the tag off
+`make up` and replace the `image:` on all three nodes in `kind.yaml`.
 
 ## Notes
 
@@ -144,7 +146,11 @@ uncomment and set `image:` in `kind.yaml` so rebuilds stay identical.
   is a laptop cluster reachable from nowhere. Do not copy these manifests into
   anything real.
 - `kind.yaml` uses kubeadm **v1beta4** syntax for `event-ttl`, which needs
-  Kubernetes 1.31 or newer. On an older node image, that patch becomes
-  `extraArgs: {event-ttl: "24h"}`.
+  Kubernetes 1.31 or newer. The pinned node image is well past that; if you
+  ever pin an older one, that patch becomes `extraArgs: {event-ttl: "24h"}`.
+- Sidecars — init containers with `restartPolicy: Always`, which this plugin
+  treats as in scope and which can carry all three probes — are GA on the
+  pinned Kubernetes, but **no demo workload uses one yet**. That path is
+  reachable here and currently unexercised.
 - Nothing here is exercised by CI. `integration/` covers the pipeline against
   `testdata/` fixtures; this cluster is for humans.
