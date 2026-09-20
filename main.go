@@ -10,8 +10,10 @@ package main
 import (
 	goflag "flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -20,6 +22,9 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/mertdotcc/kubectl-probes/internal/analyze"
+	"github.com/mertdotcc/kubectl-probes/internal/collect"
+	"github.com/mertdotcc/kubectl-probes/internal/model"
+	"github.com/mertdotcc/kubectl-probes/internal/render"
 
 	// Authentication plugins so kubeconfigs pointing at GKE, EKS, AKS, and
 	// OIDC providers work the same way they do for kubectl itself.
@@ -105,7 +110,7 @@ The plugin only reads from the API server. It never exercises a probe.`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return o.run(args)
+			return o.run(cmd, args)
 		},
 	}
 
@@ -148,16 +153,62 @@ The plugin only reads from the API server. It never exercises a probe.`,
 	return cmd
 }
 
-func (o *options) run(args []string) error {
+// run is the whole plugin: read what the flags asked for, interpret it, and
+// print it. Nothing below decides anything about the cluster, so the same
+// cluster prints the same report twice in a row.
+func (o *options) run(cmd *cobra.Command, args []string) error {
 	if err := o.validate(); err != nil {
 		return err
 	}
 	setupColor(o.color)
 
-	// Collecting, analyzing with analyzeOptions, and rendering land here. The
-	// render package is deliberately empty until those tickets fill it in.
-	_ = args
-	return nil
+	result, err := collect.Collect(cmd.Context(), collect.Options{
+		ConfigFlags:   o.configFlags,
+		Args:          args,
+		Filenames:     o.filenames,
+		Selector:      o.selector,
+		AllNamespaces: o.allNamespaces,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Every age the Inspection prints is measured against this one moment, so
+	// a report does not drift as it is written out.
+	report := analyze.Analyze(result, time.Now(), o.analyzeOptions())
+
+	// The writers come off the command rather than from color.Output and
+	// color.Error directly. The root command already points them there, and
+	// taking them from here is what lets a test drive the command.
+	return o.write(cmd.OutOrStdout(), cmd.ErrOrStderr(), report, len(args) > 0)
+}
+
+// write puts the report on the surface the flags asked for.
+//
+// The Inspection is the view of a single workload, so it is what a run that
+// named one gets. A run that named nothing, or one whose argument turned out
+// to cover more than one workload, gets the Overview: there is no reading of
+// the Inspection that covers two workloads at once.
+func (o *options) write(out, errOut io.Writer, report *model.Report, named bool) error {
+	switch o.output {
+	case outputJSON:
+		return report.Encode(out, model.FormatJSON)
+	case outputYAML:
+		return report.Encode(out, model.FormatYAML)
+	}
+	if named && len(report.Workloads) == 1 {
+		return render.Inspection(out, errOut, report)
+	}
+	return render.Overview(out, errOut, report, o.renderOptions())
+}
+
+// renderOptions is what the flags mean to the Overview.
+func (o *options) renderOptions() render.Options {
+	return render.Options{
+		AllNamespaces: o.allNamespaces,
+		Wide:          o.output == outputWide,
+		Sort:          render.SortOrder(o.sort),
+	}
 }
 
 // analyzeOptions is what the flags mean to the analyze package.
