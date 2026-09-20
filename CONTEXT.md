@@ -35,6 +35,14 @@ _Avoid_: Describe, detail view, drilldown
 The structured export of an Overview or Inspection as JSON or YAML, carrying `apiVersion` and `kind` so consumers can detect schema changes. Starts at `v1alpha1`.
 _Avoid_: Dump, export (as a noun)
 
+**Dashboard**:
+The browser surface served by `--serve`, showing the Overview and the Inspection with runtime state and failure evidence animated at the timestamps the cluster reported. It draws nothing the cluster did not report.
+_Avoid_: UI, frontend, web view, visualization
+
+**Timeline**:
+The ordered runtime state changes and failure evidence the Dashboard replays for a workload. Each entry is either observed, seen while the Dashboard was serving, or reconstructed from timestamps the cluster reported before it started.
+_Avoid_: History, log, replay (as a noun)
+
 ### Configuration
 
 **Probe**:
