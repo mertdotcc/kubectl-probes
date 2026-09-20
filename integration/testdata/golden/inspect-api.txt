@@ -1,0 +1,43 @@
+deploy/api -n prod
+2 pods, 1 terminating
+
+container api
+  Configuration
+    startup    GET /healthz:8080
+      initialDelaySeconds            0   (default)
+      periodSeconds                  5
+      timeoutSeconds                 1   (default)
+      successThreshold               1   (default)
+      failureThreshold               30
+      terminationGracePeriodSeconds  -   (the pod's own)
+    readiness  GET /ready:http
+      initialDelaySeconds            0   (default)
+      periodSeconds                  30
+      timeoutSeconds                 2
+      successThreshold               1   (default)
+      failureThreshold               3
+      terminationGracePeriodSeconds  -   (the pod's own)
+    liveness   GET /healthz:8080
+      initialDelaySeconds            10
+      periodSeconds                  10
+      timeoutSeconds                 1   (default)
+      successThreshold               1   (default)
+      failureThreshold               3
+      terminationGracePeriodSeconds  -   (the pod's own)
+  Effective timing
+    Startup gives the container 2m30s to come up before the kubelet restarts it.
+    Readiness acts after 3 consecutive failures, at worst 1m30s after the container stops responding. Readiness begins after the startup probe succeeds.
+    Liveness acts after 3 consecutive failures, at worst 30s after the container stops responding. Liveness begins after the startup probe succeeds. Liveness waits 10s before its first check.
+  Drift
+    PROBE      FIELD          RUNNING  TEMPLATE
+    readiness  periodSeconds  30       10
+  Runtime state
+    POD                  READY  STARTED  RESTARTS  LAST TERMINATION  POD-READY         CONTAINERS-READY
+    api-6c48b59d7-lm4pq  true   true     0         -                 True (2d20h ago)  True (2d20h ago)
+    api-7d9f4c6b8-2xk9v  true   true     0         -                 True (178m ago)   True (178m ago)
+  Failure evidence
+    no Unhealthy events are recorded
+  Findings
+    liveness-faster-than-readiness  Liveness detects failure in 30s and readiness in 1m30s, so a failing container is restarted before it is taken out of service.
+    timeout-at-default              The startup probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing.
+    timeout-at-default              The liveness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing.

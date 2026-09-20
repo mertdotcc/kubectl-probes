@@ -1,0 +1,126 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "db-0.18c3f1a2b4c5d6e7",
+        "namespace": "prod",
+        "creationTimestamp": "2026-03-01T11:31:40Z"
+      },
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "db-0",
+        "namespace": "prod",
+        "uid": "10000000-0000-0000-0000-000000000004",
+        "fieldPath": "spec.containers{db}"
+      },
+      "reason": "Unhealthy",
+      "type": "Warning",
+      "message": "Readiness probe failed: /bin/sh: pg_isready: connection to server at \"127.0.0.1\", port 5432 failed: Connection refused",
+      "count": 9,
+      "firstTimestamp": "2026-03-01T11:31:40Z",
+      "lastTimestamp": "2026-03-01T11:58:10Z",
+      "source": {"component": "kubelet", "host": "node-3"}
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "db-0.18c3f1a2b4c5d6e8",
+        "namespace": "prod",
+        "creationTimestamp": "2026-03-01T11:44:02Z"
+      },
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "db-0",
+        "namespace": "prod",
+        "uid": "10000000-0000-0000-0000-000000000004",
+        "fieldPath": "spec.containers{db}"
+      },
+      "reason": "Unhealthy",
+      "type": "Warning",
+      "message": "Liveness probe failed: dial tcp 10.44.2.17:5432: connect: connection refused",
+      "count": 4,
+      "firstTimestamp": "2026-03-01T11:44:02Z",
+      "lastTimestamp": "2026-03-01T11:51:52Z",
+      "source": {"component": "kubelet", "host": "node-3"}
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "db-0.18c3f1a2b4c5d6e9",
+        "namespace": "prod",
+        "creationTimestamp": "2026-03-01T11:51:58Z"
+      },
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "db-0",
+        "namespace": "prod",
+        "uid": "10000000-0000-0000-0000-000000000004",
+        "fieldPath": "spec.containers{db}"
+      },
+      "reason": "Killing",
+      "type": "Normal",
+      "message": "Container db failed liveness probe, will be restarted",
+      "count": 4,
+      "firstTimestamp": "2026-03-01T11:44:12Z",
+      "lastTimestamp": "2026-03-01T11:51:58Z",
+      "source": {"component": "kubelet", "host": "node-3"}
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "web-5f8c2d941-ffz2r.18c3e0119a7f2201",
+        "namespace": "prod",
+        "creationTimestamp": "2026-02-28T10:02:44Z"
+      },
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "web-5f8c2d941-ffz2r",
+        "namespace": "prod",
+        "uid": "10000000-0000-0000-0000-000000000006",
+        "fieldPath": "spec.initContainers{istio-proxy}"
+      },
+      "reason": "Unhealthy",
+      "type": "Warning",
+      "message": "Startup probe failed: Get \"http://10.44.1.9:15021/healthz/ready\": dial tcp 10.44.1.9:15021: connect: connection refused",
+      "count": 2,
+      "firstTimestamp": "2026-02-28T10:02:43Z",
+      "lastTimestamp": "2026-02-28T10:02:44Z",
+      "source": {"component": "kubelet", "host": "node-1"}
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "Event",
+      "metadata": {
+        "name": "api-7d9f4c6b8-qq77t.18c3f0ab19de4410",
+        "namespace": "prod",
+        "creationTimestamp": "2026-03-01T11:59:12Z"
+      },
+      "involvedObject": {
+        "apiVersion": "v1",
+        "kind": "Pod",
+        "name": "api-7d9f4c6b8-qq77t",
+        "namespace": "prod",
+        "uid": "10000000-0000-0000-0000-000000000003",
+        "fieldPath": "spec.containers{api}"
+      },
+      "reason": "Unhealthy",
+      "type": "Warning",
+      "message": "Readiness probe failed: HTTP probe failed with statuscode: 503",
+      "count": 3,
+      "firstTimestamp": "2026-03-01T11:59:12Z",
+      "lastTimestamp": "2026-03-01T11:59:32Z",
+      "source": {"component": "kubelet", "host": "node-2"}
+    }
+  ]
+}

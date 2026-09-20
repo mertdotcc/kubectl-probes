@@ -1,0 +1,713 @@
+{
+  "apiVersion": "probes.kubectl.dev/v1alpha1",
+  "kind": "ProbeReport",
+  "generatedAt": "2026-03-01T12:00:00Z",
+  "workloads": [
+    {
+      "kind": "Deployment",
+      "group": "apps",
+      "name": "api",
+      "namespace": "prod",
+      "displayName": "deploy/api",
+      "podCount": 2,
+      "terminatingPodCount": 1,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "api",
+          "startup": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /healthz:8080",
+                "path": "/healthz",
+                "port": "8080",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 5,
+              "failureThreshold": 30
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "2m30s",
+              "startupBudget": "2m30s"
+            }
+          },
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /ready:http",
+                "path": "/ready",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 30,
+              "timeoutSeconds": 2,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "1m30s",
+              "afterStartup": true
+            },
+            "drifted": true,
+            "template": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /ready:http",
+                "path": "/ready",
+                "port": "http",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 10,
+              "timeoutSeconds": 2,
+              "failureThreshold": 3
+            }
+          },
+          "liveness": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /healthz:8080",
+                "path": "/healthz",
+                "port": "8080",
+                "scheme": "HTTP"
+              },
+              "initialDelaySeconds": 10,
+              "periodSeconds": 10,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "10s",
+              "failureDetection": "30s",
+              "afterStartup": true
+            }
+          },
+          "runtime": {
+            "ready": 2,
+            "total": 2,
+            "restarts": 0,
+            "failures": 0
+          },
+          "pods": [
+            {
+              "name": "api-6c48b59d7-lm4pq",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-26T15:13:02Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-26T15:13:02Z"
+                }
+              ]
+            },
+            {
+              "name": "api-7d9f4c6b8-2xk9v",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-03-01T09:01:12Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-03-01T09:01:12Z"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "liveness-faster-than-readiness",
+              "message": "Liveness detects failure in 30s and readiness in 1m30s, so a failing container is restarted before it is taken out of service."
+            },
+            {
+              "rule": "timeout-at-default",
+              "message": "The startup probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing."
+            },
+            {
+              "rule": "timeout-at-default",
+              "message": "The liveness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "group": "apps",
+      "name": "cache",
+      "namespace": "prod",
+      "displayName": "sts/cache",
+      "podCount": 0,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "cache",
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "tcp",
+                "summary": "tcp :redis",
+                "port": "redis"
+              },
+              "periodSeconds": 10,
+              "timeoutSeconds": 5,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "30s"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "kind": "Rollout",
+      "group": "argoproj.io",
+      "name": "checkout",
+      "namespace": "prod",
+      "displayName": "rollout.argoproj.io/checkout",
+      "podCount": 1,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "checkout",
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "grpc",
+                "summary": "grpc :9000 checkout.Health",
+                "port": "9000",
+                "service": "checkout.Health"
+              },
+              "periodSeconds": 10,
+              "timeoutSeconds": 15,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "30s"
+            }
+          },
+          "runtime": {
+            "ready": 1,
+            "total": 1,
+            "restarts": 0,
+            "failures": 0
+          },
+          "pods": [
+            {
+              "name": "checkout-84bd6f7c5-p9v2c",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-28T18:30:48Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-28T18:30:48Z"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "timeout-exceeds-period",
+              "message": "The readiness probe allows 15s for an answer but runs every 10s, so a check can still be outstanding when the next one is due."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "StatefulSet",
+      "group": "apps",
+      "name": "db",
+      "namespace": "prod",
+      "displayName": "sts/db",
+      "podCount": 2,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "db",
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "exec",
+                "summary": "exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1",
+                "command": [
+                  "/bin/sh",
+                  "-c",
+                  "pg_isready -U postgres -h 127.0.0.1"
+                ]
+              },
+              "periodSeconds": 10,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "30s"
+            }
+          },
+          "liveness": {
+            "config": {
+              "handler": {
+                "type": "tcp",
+                "summary": "tcp :5432",
+                "port": "5432"
+              },
+              "periodSeconds": 5,
+              "failureThreshold": 2
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "10s"
+            }
+          },
+          "runtime": {
+            "ready": 1,
+            "total": 2,
+            "restarts": 7,
+            "failures": 13
+          },
+          "pods": [
+            {
+              "name": "db-0",
+              "started": true,
+              "restarts": 7,
+              "lastTermination": {
+                "reason": "Error",
+                "exitCode": 137,
+                "signal": 9,
+                "finishedAt": "2026-03-01T11:51:58Z"
+              },
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "False",
+                  "lastTransitionTime": "2026-03-01T11:31:40Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "False",
+                  "lastTransitionTime": "2026-03-01T11:31:40Z"
+                }
+              ],
+              "events": [
+                {
+                  "probe": "readiness",
+                  "count": 9,
+                  "firstSeen": "2026-03-01T11:31:40Z",
+                  "lastSeen": "2026-03-01T11:58:10Z",
+                  "message": "Readiness probe failed: /bin/sh: pg_isready: connection to server at \"127.0.0.1\", port 5432 failed: Connection refused"
+                },
+                {
+                  "probe": "liveness",
+                  "count": 4,
+                  "firstSeen": "2026-03-01T11:44:02Z",
+                  "lastSeen": "2026-03-01T11:51:52Z",
+                  "message": "Liveness probe failed: dial tcp 10.44.2.17:5432: connect: connection refused"
+                }
+              ]
+            },
+            {
+              "name": "db-1",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-27T22:16:12Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-27T22:16:12Z"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "liveness-faster-than-readiness",
+              "message": "Liveness detects failure in 10s and readiness in 30s, so a failing container is restarted before it is taken out of service."
+            },
+            {
+              "rule": "timeout-at-default",
+              "message": "The readiness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing."
+            },
+            {
+              "rule": "timeout-at-default",
+              "message": "The liveness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing."
+            },
+            {
+              "rule": "probe-failures-recent",
+              "message": "The cluster reports 13 recent Unhealthy events for the readiness and liveness probes, so this is failing now and not only on paper."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "Pod",
+      "name": "debug",
+      "namespace": "prod",
+      "displayName": "pod/debug",
+      "podCount": 1,
+      "containers": [
+        {
+          "name": "debug",
+          "runtime": {
+            "ready": 1,
+            "total": 1,
+            "restarts": 0,
+            "failures": 0
+          },
+          "pods": [
+            {
+              "name": "debug",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-03-01T11:55:14Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-03-01T11:55:14Z"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "no-readiness-probe",
+              "message": "No readiness probe is configured, so the kubelet reports this container ready the moment it starts and traffic arrives from then on."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "Job",
+      "group": "batch",
+      "name": "import",
+      "namespace": "prod",
+      "displayName": "job/import",
+      "podCount": 1,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "import",
+          "runtime": {
+            "ready": 1,
+            "total": 1,
+            "restarts": 0,
+            "failures": 0
+          },
+          "pods": [
+            {
+              "name": "import-4k2wq",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-03-01T11:40:19Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-03-01T11:40:19Z"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "no-readiness-probe",
+              "message": "No readiness probe is configured, so the kubelet reports this container ready the moment it starts and traffic arrives from then on."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "CronJob",
+      "group": "batch",
+      "name": "nightly",
+      "namespace": "prod",
+      "displayName": "cj/nightly",
+      "podCount": 1,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "report",
+          "liveness": {
+            "config": {
+              "handler": {
+                "type": "exec",
+                "summary": "exec /bin/sh -c test -f /tmp/alive",
+                "command": [
+                  "/bin/sh",
+                  "-c",
+                  "test -f /tmp/alive"
+                ]
+              },
+              "initialDelaySeconds": 60,
+              "periodSeconds": 30,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "1m0s",
+              "failureDetection": "1m30s"
+            }
+          },
+          "runtime": {
+            "ready": 1,
+            "total": 1,
+            "restarts": 0,
+            "failures": 0
+          },
+          "pods": [
+            {
+              "name": "nightly-29281440-hh8tn",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-03-01T11:00:22Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-03-01T11:00:22Z"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "no-readiness-probe",
+              "message": "No readiness probe is configured, so the kubelet reports this container ready the moment it starts and traffic arrives from then on."
+            },
+            {
+              "rule": "liveness-without-startup",
+              "message": "Liveness waits 1m0s before its first check and there is no startup probe, so a container slower than that to come up is restarted while it is still starting."
+            },
+            {
+              "rule": "timeout-at-default",
+              "message": "The liveness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "Deployment",
+      "group": "apps",
+      "name": "web",
+      "namespace": "prod",
+      "displayName": "deploy/web",
+      "podCount": 1,
+      "templateAvailable": true,
+      "containers": [
+        {
+          "name": "web",
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "tcp",
+                "summary": "tcp :8080",
+                "port": "8080"
+              },
+              "periodSeconds": 10,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "30s"
+            }
+          },
+          "liveness": {
+            "config": {
+              "handler": {
+                "type": "tcp",
+                "summary": "tcp :8080",
+                "port": "8080"
+              },
+              "initialDelaySeconds": 45,
+              "periodSeconds": 20,
+              "failureThreshold": 3
+            },
+            "timing": {
+              "firstCheck": "45s",
+              "failureDetection": "1m0s"
+            }
+          },
+          "runtime": {
+            "ready": 1,
+            "total": 1,
+            "restarts": 0,
+            "failures": 0
+          },
+          "pods": [
+            {
+              "name": "web-5f8c2d941-ffz2r",
+              "ready": true,
+              "started": true,
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-28T10:03:31Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-28T10:03:31Z"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "liveness-without-startup",
+              "message": "Liveness waits 45s before its first check and there is no startup probe, so a container slower than that to come up is restarted while it is still starting."
+            },
+            {
+              "rule": "liveness-same-as-readiness",
+              "message": "Liveness and readiness both check tcp :8080, so whatever takes this container out of service also restarts it."
+            },
+            {
+              "rule": "timeout-at-default",
+              "message": "The readiness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing."
+            },
+            {
+              "rule": "timeout-at-default",
+              "message": "The liveness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing."
+            }
+          ]
+        },
+        {
+          "name": "istio-proxy",
+          "sidecar": true,
+          "startup": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /healthz/ready:15021",
+                "path": "/healthz/ready",
+                "port": "15021",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 1,
+              "timeoutSeconds": 3,
+              "failureThreshold": 60
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "1m0s",
+              "startupBudget": "1m0s"
+            }
+          },
+          "readiness": {
+            "config": {
+              "handler": {
+                "type": "http",
+                "summary": "GET /healthz/ready:15021",
+                "path": "/healthz/ready",
+                "port": "15021",
+                "scheme": "HTTP"
+              },
+              "periodSeconds": 15,
+              "timeoutSeconds": 3,
+              "failureThreshold": 4
+            },
+            "timing": {
+              "firstCheck": "0s",
+              "failureDetection": "1m0s",
+              "afterStartup": true
+            }
+          },
+          "runtime": {
+            "ready": 1,
+            "total": 1,
+            "restarts": 1,
+            "failures": 2
+          },
+          "pods": [
+            {
+              "name": "web-5f8c2d941-ffz2r",
+              "ready": true,
+              "started": true,
+              "restarts": 1,
+              "lastTermination": {
+                "reason": "Error",
+                "exitCode": 2,
+                "finishedAt": "2026-02-28T10:02:44Z"
+              },
+              "conditions": [
+                {
+                  "type": "Ready",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-28T10:03:31Z"
+                },
+                {
+                  "type": "ContainersReady",
+                  "status": "True",
+                  "lastTransitionTime": "2026-02-28T10:03:31Z"
+                }
+              ],
+              "events": [
+                {
+                  "probe": "startup",
+                  "count": 2,
+                  "firstSeen": "2026-02-28T10:02:43Z",
+                  "lastSeen": "2026-02-28T10:02:44Z",
+                  "message": "Startup probe failed: Get \"http://10.44.1.9:15021/healthz/ready\": dial tcp 10.44.1.9:15021: connect: connection refused"
+                }
+              ]
+            }
+          ],
+          "findings": [
+            {
+              "rule": "timeout-exceeds-period",
+              "message": "The startup probe allows 3s for an answer but runs every 1s, so a check can still be outstanding when the next one is due."
+            },
+            {
+              "rule": "probe-failures-recent",
+              "message": "The cluster reports 2 recent Unhealthy events for the startup probe, so this is failing now and not only on paper."
+            }
+          ]
+        }
+      ],
+      "initContainers": [
+        "wait-for-db"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,497 @@
+apiVersion: probes.kubectl.dev/v1alpha1
+generatedAt: "2026-03-01T12:00:00Z"
+kind: ProbeReport
+workloads:
+- containers:
+  - findings:
+    - message: Liveness detects failure in 30s and readiness in 1m30s, so a failing
+        container is restarted before it is taken out of service.
+      rule: liveness-faster-than-readiness
+    - message: The startup probe allows the default 1s for an answer, so a container
+        that is only slow to answer counts as failing.
+      rule: timeout-at-default
+    - message: The liveness probe allows the default 1s for an answer, so a container
+        that is only slow to answer counts as failing.
+      rule: timeout-at-default
+    liveness:
+      config:
+        failureThreshold: 3
+        handler:
+          path: /healthz
+          port: "8080"
+          scheme: HTTP
+          summary: GET /healthz:8080
+          type: http
+        initialDelaySeconds: 10
+        periodSeconds: 10
+      timing:
+        afterStartup: true
+        failureDetection: 30s
+        firstCheck: 10s
+    name: api
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-02-26T15:13:02Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-02-26T15:13:02Z"
+        status: "True"
+        type: ContainersReady
+      name: api-6c48b59d7-lm4pq
+      ready: true
+      started: true
+    - conditions:
+      - lastTransitionTime: "2026-03-01T09:01:12Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-03-01T09:01:12Z"
+        status: "True"
+        type: ContainersReady
+      name: api-7d9f4c6b8-2xk9v
+      ready: true
+      started: true
+    readiness:
+      config:
+        failureThreshold: 3
+        handler:
+          path: /ready
+          port: http
+          scheme: HTTP
+          summary: GET /ready:http
+          type: http
+        periodSeconds: 30
+        timeoutSeconds: 2
+      drifted: true
+      template:
+        failureThreshold: 3
+        handler:
+          path: /ready
+          port: http
+          scheme: HTTP
+          summary: GET /ready:http
+          type: http
+        periodSeconds: 10
+        timeoutSeconds: 2
+      timing:
+        afterStartup: true
+        failureDetection: 1m30s
+        firstCheck: 0s
+    runtime:
+      failures: 0
+      ready: 2
+      restarts: 0
+      total: 2
+    startup:
+      config:
+        failureThreshold: 30
+        handler:
+          path: /healthz
+          port: "8080"
+          scheme: HTTP
+          summary: GET /healthz:8080
+          type: http
+        periodSeconds: 5
+      timing:
+        failureDetection: 2m30s
+        firstCheck: 0s
+        startupBudget: 2m30s
+  displayName: deploy/api
+  group: apps
+  kind: Deployment
+  name: api
+  namespace: prod
+  podCount: 2
+  templateAvailable: true
+  terminatingPodCount: 1
+- containers:
+  - name: cache
+    readiness:
+      config:
+        failureThreshold: 3
+        handler:
+          port: redis
+          summary: tcp :redis
+          type: tcp
+        periodSeconds: 10
+        timeoutSeconds: 5
+      timing:
+        failureDetection: 30s
+        firstCheck: 0s
+  displayName: sts/cache
+  group: apps
+  kind: StatefulSet
+  name: cache
+  namespace: prod
+  podCount: 0
+  templateAvailable: true
+- containers:
+  - findings:
+    - message: The readiness probe allows 15s for an answer but runs every 10s, so
+        a check can still be outstanding when the next one is due.
+      rule: timeout-exceeds-period
+    name: checkout
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-02-28T18:30:48Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-02-28T18:30:48Z"
+        status: "True"
+        type: ContainersReady
+      name: checkout-84bd6f7c5-p9v2c
+      ready: true
+      started: true
+    readiness:
+      config:
+        failureThreshold: 3
+        handler:
+          port: "9000"
+          service: checkout.Health
+          summary: grpc :9000 checkout.Health
+          type: grpc
+        periodSeconds: 10
+        timeoutSeconds: 15
+      timing:
+        failureDetection: 30s
+        firstCheck: 0s
+    runtime:
+      failures: 0
+      ready: 1
+      restarts: 0
+      total: 1
+  displayName: rollout.argoproj.io/checkout
+  group: argoproj.io
+  kind: Rollout
+  name: checkout
+  namespace: prod
+  podCount: 1
+  templateAvailable: true
+- containers:
+  - findings:
+    - message: Liveness detects failure in 10s and readiness in 30s, so a failing
+        container is restarted before it is taken out of service.
+      rule: liveness-faster-than-readiness
+    - message: The readiness probe allows the default 1s for an answer, so a container
+        that is only slow to answer counts as failing.
+      rule: timeout-at-default
+    - message: The liveness probe allows the default 1s for an answer, so a container
+        that is only slow to answer counts as failing.
+      rule: timeout-at-default
+    - message: The cluster reports 13 recent Unhealthy events for the readiness and
+        liveness probes, so this is failing now and not only on paper.
+      rule: probe-failures-recent
+    liveness:
+      config:
+        failureThreshold: 2
+        handler:
+          port: "5432"
+          summary: tcp :5432
+          type: tcp
+        periodSeconds: 5
+      timing:
+        failureDetection: 10s
+        firstCheck: 0s
+    name: db
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-03-01T11:31:40Z"
+        status: "False"
+        type: Ready
+      - lastTransitionTime: "2026-03-01T11:31:40Z"
+        status: "False"
+        type: ContainersReady
+      events:
+      - count: 9
+        firstSeen: "2026-03-01T11:31:40Z"
+        lastSeen: "2026-03-01T11:58:10Z"
+        message: 'Readiness probe failed: /bin/sh: pg_isready: connection to server
+          at "127.0.0.1", port 5432 failed: Connection refused'
+        probe: readiness
+      - count: 4
+        firstSeen: "2026-03-01T11:44:02Z"
+        lastSeen: "2026-03-01T11:51:52Z"
+        message: 'Liveness probe failed: dial tcp 10.44.2.17:5432: connect: connection
+          refused'
+        probe: liveness
+      lastTermination:
+        exitCode: 137
+        finishedAt: "2026-03-01T11:51:58Z"
+        reason: Error
+        signal: 9
+      name: db-0
+      restarts: 7
+      started: true
+    - conditions:
+      - lastTransitionTime: "2026-02-27T22:16:12Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-02-27T22:16:12Z"
+        status: "True"
+        type: ContainersReady
+      name: db-1
+      ready: true
+      started: true
+    readiness:
+      config:
+        failureThreshold: 3
+        handler:
+          command:
+          - /bin/sh
+          - -c
+          - pg_isready -U postgres -h 127.0.0.1
+          summary: exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1
+          type: exec
+        periodSeconds: 10
+      timing:
+        failureDetection: 30s
+        firstCheck: 0s
+    runtime:
+      failures: 13
+      ready: 1
+      restarts: 7
+      total: 2
+  displayName: sts/db
+  group: apps
+  kind: StatefulSet
+  name: db
+  namespace: prod
+  podCount: 2
+  templateAvailable: true
+- containers:
+  - findings:
+    - message: No readiness probe is configured, so the kubelet reports this container
+        ready the moment it starts and traffic arrives from then on.
+      rule: no-readiness-probe
+    name: debug
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-03-01T11:55:14Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-03-01T11:55:14Z"
+        status: "True"
+        type: ContainersReady
+      name: debug
+      ready: true
+      started: true
+    runtime:
+      failures: 0
+      ready: 1
+      restarts: 0
+      total: 1
+  displayName: pod/debug
+  kind: Pod
+  name: debug
+  namespace: prod
+  podCount: 1
+- containers:
+  - findings:
+    - message: No readiness probe is configured, so the kubelet reports this container
+        ready the moment it starts and traffic arrives from then on.
+      rule: no-readiness-probe
+    name: import
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-03-01T11:40:19Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-03-01T11:40:19Z"
+        status: "True"
+        type: ContainersReady
+      name: import-4k2wq
+      ready: true
+      started: true
+    runtime:
+      failures: 0
+      ready: 1
+      restarts: 0
+      total: 1
+  displayName: job/import
+  group: batch
+  kind: Job
+  name: import
+  namespace: prod
+  podCount: 1
+  templateAvailable: true
+- containers:
+  - findings:
+    - message: No readiness probe is configured, so the kubelet reports this container
+        ready the moment it starts and traffic arrives from then on.
+      rule: no-readiness-probe
+    - message: Liveness waits 1m0s before its first check and there is no startup
+        probe, so a container slower than that to come up is restarted while it is
+        still starting.
+      rule: liveness-without-startup
+    - message: The liveness probe allows the default 1s for an answer, so a container
+        that is only slow to answer counts as failing.
+      rule: timeout-at-default
+    liveness:
+      config:
+        failureThreshold: 3
+        handler:
+          command:
+          - /bin/sh
+          - -c
+          - test -f /tmp/alive
+          summary: exec /bin/sh -c test -f /tmp/alive
+          type: exec
+        initialDelaySeconds: 60
+        periodSeconds: 30
+      timing:
+        failureDetection: 1m30s
+        firstCheck: 1m0s
+    name: report
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-03-01T11:00:22Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-03-01T11:00:22Z"
+        status: "True"
+        type: ContainersReady
+      name: nightly-29281440-hh8tn
+      ready: true
+      started: true
+    runtime:
+      failures: 0
+      ready: 1
+      restarts: 0
+      total: 1
+  displayName: cj/nightly
+  group: batch
+  kind: CronJob
+  name: nightly
+  namespace: prod
+  podCount: 1
+  templateAvailable: true
+- containers:
+  - findings:
+    - message: Liveness waits 45s before its first check and there is no startup probe,
+        so a container slower than that to come up is restarted while it is still
+        starting.
+      rule: liveness-without-startup
+    - message: Liveness and readiness both check tcp :8080, so whatever takes this
+        container out of service also restarts it.
+      rule: liveness-same-as-readiness
+    - message: The readiness probe allows the default 1s for an answer, so a container
+        that is only slow to answer counts as failing.
+      rule: timeout-at-default
+    - message: The liveness probe allows the default 1s for an answer, so a container
+        that is only slow to answer counts as failing.
+      rule: timeout-at-default
+    liveness:
+      config:
+        failureThreshold: 3
+        handler:
+          port: "8080"
+          summary: tcp :8080
+          type: tcp
+        initialDelaySeconds: 45
+        periodSeconds: 20
+      timing:
+        failureDetection: 1m0s
+        firstCheck: 45s
+    name: web
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-02-28T10:03:31Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-02-28T10:03:31Z"
+        status: "True"
+        type: ContainersReady
+      name: web-5f8c2d941-ffz2r
+      ready: true
+      started: true
+    readiness:
+      config:
+        failureThreshold: 3
+        handler:
+          port: "8080"
+          summary: tcp :8080
+          type: tcp
+        periodSeconds: 10
+      timing:
+        failureDetection: 30s
+        firstCheck: 0s
+    runtime:
+      failures: 0
+      ready: 1
+      restarts: 0
+      total: 1
+  - findings:
+    - message: The startup probe allows 3s for an answer but runs every 1s, so a check
+        can still be outstanding when the next one is due.
+      rule: timeout-exceeds-period
+    - message: The cluster reports 2 recent Unhealthy events for the startup probe,
+        so this is failing now and not only on paper.
+      rule: probe-failures-recent
+    name: istio-proxy
+    pods:
+    - conditions:
+      - lastTransitionTime: "2026-02-28T10:03:31Z"
+        status: "True"
+        type: Ready
+      - lastTransitionTime: "2026-02-28T10:03:31Z"
+        status: "True"
+        type: ContainersReady
+      events:
+      - count: 2
+        firstSeen: "2026-02-28T10:02:43Z"
+        lastSeen: "2026-02-28T10:02:44Z"
+        message: 'Startup probe failed: Get "http://10.44.1.9:15021/healthz/ready":
+          dial tcp 10.44.1.9:15021: connect: connection refused'
+        probe: startup
+      lastTermination:
+        exitCode: 2
+        finishedAt: "2026-02-28T10:02:44Z"
+        reason: Error
+      name: web-5f8c2d941-ffz2r
+      ready: true
+      restarts: 1
+      started: true
+    readiness:
+      config:
+        failureThreshold: 4
+        handler:
+          path: /healthz/ready
+          port: "15021"
+          scheme: HTTP
+          summary: GET /healthz/ready:15021
+          type: http
+        periodSeconds: 15
+        timeoutSeconds: 3
+      timing:
+        afterStartup: true
+        failureDetection: 1m0s
+        firstCheck: 0s
+    runtime:
+      failures: 2
+      ready: 1
+      restarts: 1
+      total: 1
+    sidecar: true
+    startup:
+      config:
+        failureThreshold: 60
+        handler:
+          path: /healthz/ready
+          port: "15021"
+          scheme: HTTP
+          summary: GET /healthz/ready:15021
+          type: http
+        periodSeconds: 1
+        timeoutSeconds: 3
+      timing:
+        failureDetection: 1m0s
+        firstCheck: 0s
+        startupBudget: 1m0s
+  displayName: deploy/web
+  group: apps
+  initContainers:
+  - wait-for-db
+  kind: Deployment
+  name: web
+  namespace: prod
+  podCount: 1
+  templateAvailable: true

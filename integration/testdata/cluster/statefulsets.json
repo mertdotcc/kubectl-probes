@@ -1,0 +1,78 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "StatefulSet",
+      "metadata": {
+        "name": "db",
+        "namespace": "prod",
+        "uid": "00000000-0000-0000-0000-0000000000c0",
+        "creationTimestamp": "2026-01-14T08:05:00Z",
+        "labels": {"app": "db"}
+      },
+      "spec": {
+        "replicas": 2,
+        "serviceName": "db",
+        "selector": {"matchLabels": {"app": "db"}},
+        "template": {
+          "metadata": {"labels": {"app": "db"}},
+          "spec": {
+            "containers": [
+              {
+                "name": "db",
+                "image": "docker.io/library/postgres:16.2",
+                "ports": [{"name": "postgres", "containerPort": 5432, "protocol": "TCP"}],
+                "readinessProbe": {
+                  "exec": {"command": ["/bin/sh", "-c", "pg_isready -U postgres -h 127.0.0.1"]},
+                  "periodSeconds": 10,
+                  "failureThreshold": 3
+                },
+                "livenessProbe": {
+                  "tcpSocket": {"port": 5432},
+                  "periodSeconds": 5,
+                  "failureThreshold": 2
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "StatefulSet",
+      "metadata": {
+        "name": "cache",
+        "namespace": "prod",
+        "uid": "00000000-0000-0000-0000-0000000000d0",
+        "creationTimestamp": "2026-02-20T16:41:00Z",
+        "labels": {"app": "cache"}
+      },
+      "spec": {
+        "replicas": 0,
+        "serviceName": "cache",
+        "selector": {"matchLabels": {"app": "cache"}},
+        "template": {
+          "metadata": {"labels": {"app": "cache"}},
+          "spec": {
+            "containers": [
+              {
+                "name": "cache",
+                "image": "docker.io/library/redis:7.2",
+                "ports": [{"name": "redis", "containerPort": 6379, "protocol": "TCP"}],
+                "readinessProbe": {
+                  "tcpSocket": {"port": "redis"},
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 5,
+                  "failureThreshold": 3
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

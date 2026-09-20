@@ -1,0 +1,115 @@
+{
+  "apiVersion": "v1",
+  "kind": "List",
+  "items": [
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "api",
+        "namespace": "prod",
+        "uid": "00000000-0000-0000-0000-0000000000a0",
+        "creationTimestamp": "2026-02-01T09:00:00Z",
+        "generation": 4,
+        "labels": {"app": "api"}
+      },
+      "spec": {
+        "replicas": 3,
+        "selector": {"matchLabels": {"app": "api"}},
+        "template": {
+          "metadata": {"labels": {"app": "api"}},
+          "spec": {
+            "containers": [
+              {
+                "name": "api",
+                "image": "registry.example.com/api:1.8.2",
+                "ports": [{"name": "http", "containerPort": 8080, "protocol": "TCP"}],
+                "startupProbe": {
+                  "httpGet": {"path": "/healthz", "port": 8080, "scheme": "HTTP"},
+                  "periodSeconds": 5,
+                  "failureThreshold": 30
+                },
+                "readinessProbe": {
+                  "httpGet": {"path": "/ready", "port": "http", "scheme": "HTTP"},
+                  "periodSeconds": 10,
+                  "timeoutSeconds": 2,
+                  "failureThreshold": 3
+                },
+                "livenessProbe": {
+                  "httpGet": {"path": "/healthz", "port": 8080, "scheme": "HTTP"},
+                  "initialDelaySeconds": 10,
+                  "periodSeconds": 10,
+                  "failureThreshold": 3
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "apiVersion": "apps/v1",
+      "kind": "Deployment",
+      "metadata": {
+        "name": "web",
+        "namespace": "prod",
+        "uid": "00000000-0000-0000-0000-0000000000b0",
+        "creationTimestamp": "2026-02-03T11:20:00Z",
+        "generation": 2,
+        "labels": {"app": "web"}
+      },
+      "spec": {
+        "replicas": 1,
+        "selector": {"matchLabels": {"app": "web"}},
+        "template": {
+          "metadata": {"labels": {"app": "web"}},
+          "spec": {
+            "initContainers": [
+              {
+                "name": "wait-for-db",
+                "image": "busybox:1.36",
+                "command": ["sh", "-c", "until nc -z db 5432; do sleep 1; done"]
+              },
+              {
+                "name": "istio-proxy",
+                "image": "docker.io/istio/proxyv2:1.24.0",
+                "restartPolicy": "Always",
+                "ports": [{"name": "status", "containerPort": 15021, "protocol": "TCP"}],
+                "startupProbe": {
+                  "httpGet": {"path": "/healthz/ready", "port": 15021, "scheme": "HTTP"},
+                  "periodSeconds": 1,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 60
+                },
+                "readinessProbe": {
+                  "httpGet": {"path": "/healthz/ready", "port": 15021, "scheme": "HTTP"},
+                  "periodSeconds": 15,
+                  "timeoutSeconds": 3,
+                  "failureThreshold": 4
+                }
+              }
+            ],
+            "containers": [
+              {
+                "name": "web",
+                "image": "registry.example.com/web:3.1.0",
+                "ports": [{"name": "http", "containerPort": 8080, "protocol": "TCP"}],
+                "readinessProbe": {
+                  "tcpSocket": {"port": 8080},
+                  "periodSeconds": 10,
+                  "failureThreshold": 3
+                },
+                "livenessProbe": {
+                  "tcpSocket": {"port": 8080},
+                  "initialDelaySeconds": 45,
+                  "periodSeconds": 20,
+                  "failureThreshold": 3
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
