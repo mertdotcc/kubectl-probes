@@ -1,0 +1,30 @@
+# A CronJob, so the Overview has an owner kind that is not a Deployment and
+# the plugin has to walk CronJob -> Job -> Pod to name it.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup
+  namespace: shop
+spec:
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: backup
+            image: postgres:16.4-alpine
+            imagePullPolicy: IfNotPresent
+            command:
+            - sh
+            - -c
+            - 'pg_dump -h postgres -U shop shop > /tmp/shop.sql && echo "backed up $(wc -c < /tmp/shop.sql) bytes"'
+            env:
+            - name: PGPASSWORD
+              value: notasecret
+            resources:
+              requests: {cpu: 10m, memory: 32Mi}
+              limits: {memory: 128Mi}

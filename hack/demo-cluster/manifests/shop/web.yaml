@@ -1,0 +1,73 @@
+# The front door, and the example of probes done well: a startup probe covers
+# the slow first boot, readiness and liveness ask different questions, and
+# every timeout is written down. It trips no rules, which is the point — a
+# demo where everything is broken teaches nothing about what good looks like.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: shop
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: web
+    spec:
+      containers:
+      - name: web
+        image: ghcr.io/stefanprodan/podinfo:6.7.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 9898
+        env:
+        # What makes the browser page show a real call to another service.
+        - name: PODINFO_BACKEND_URL
+          value: http://api.shop.svc.cluster.local:9898/echo
+        - name: PODINFO_UI_MESSAGE
+          value: "FRONTEND — shop/web · dots: this pod, then the api pod it called"
+        # A different colour from api, so you can tell at a glance which
+        # service you are looking at.
+        - name: PODINFO_UI_COLOR
+          value: "#34577c"
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 2
+          timeoutSeconds: 2
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests: {cpu: 10m, memory: 32Mi}
+          limits: {memory: 128Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: shop
+spec:
+  selector:
+    app.kubernetes.io/name: web
+  ports:
+  - name: http
+    port: 9898
+    targetPort: http

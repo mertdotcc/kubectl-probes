@@ -1,0 +1,50 @@
+# Has a liveness probe and no readiness probe: the kubelet will restart it when
+# it dies but sends traffic to it the moment it starts. A very ordinary
+# oversight, and the one the plugin was written to make visible.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: catalog
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: catalog
+    spec:
+      containers:
+      - name: catalog
+        image: ghcr.io/stefanprodan/podinfo:6.7.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 9898
+        env:
+        - name: PODINFO_UI_MESSAGE
+          value: "shop catalog"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          failureThreshold: 3
+        resources:
+          requests: {cpu: 10m, memory: 32Mi}
+          limits: {memory: 128Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: shop
+spec:
+  selector:
+    app.kubernetes.io/name: catalog
+  ports:
+  - name: http
+    port: 9898
+    targetPort: http

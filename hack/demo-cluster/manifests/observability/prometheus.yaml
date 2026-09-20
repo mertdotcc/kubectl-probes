@@ -1,0 +1,144 @@
+# Prometheus, installed as plain manifests rather than through the operator:
+# the plugin reads probes, and a StatefulSet's probes are as real either way.
+# See ADR 0004 for why there is no Helm here.
+#
+# Its probes trip liveness-faster-than-readiness: liveness gives up after 10s
+# and readiness after 30s, so a Prometheus that is merely slow to replay its
+# WAL gets restarted on its way out of service, and restarts the replay.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: observability
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+- apiGroups: [""]
+  resources: [nodes, nodes/metrics, services, endpoints, pods]
+  verbs: [get, list, watch]
+- nonResourceURLs: ["/metrics"]
+  verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: observability
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus
+  namespace: observability
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s
+    scrape_configs:
+    - job_name: kubernetes-nodes
+      kubernetes_sd_configs:
+      - role: node
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+    - job_name: node-exporter
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        action: keep
+        regex: node-exporter
+    - job_name: podinfo
+      kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [shop]
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: prometheus
+  namespace: observability
+spec:
+  serviceName: prometheus
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus
+    spec:
+      serviceAccountName: prometheus
+      securityContext:
+        fsGroup: 65534
+        runAsUser: 65534
+        runAsNonRoot: true
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v2.54.1
+        imagePullPolicy: IfNotPresent
+        args:
+        - --config.file=/etc/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --storage.tsdb.retention.time=2h
+        - --web.enable-lifecycle
+        ports:
+        - name: http
+          containerPort: 9090
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 4
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        volumeMounts:
+        - name: config
+          mountPath: /etc/prometheus
+        - name: data
+          mountPath: /prometheus
+        resources:
+          requests: {cpu: 50m, memory: 256Mi}
+          limits: {memory: 768Mi}
+      volumes:
+      - name: config
+        configMap:
+          name: prometheus
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: observability
+spec:
+  selector:
+    app.kubernetes.io/name: prometheus
+  ports:
+  - name: http
+    port: 9090
+    targetPort: http

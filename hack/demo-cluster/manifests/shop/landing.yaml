@@ -1,0 +1,71 @@
+# The front door. Plain nginx serving one hand-written page that explains what
+# the rest of the cluster is, because podinfo's own UI cannot say it: there is
+# nowhere in it to label the dots or draw the request path.
+#
+# Its probes are the third example of a well-configured container: readiness
+# and liveness ask different questions on different endpoints, every timeout is
+# written down, and it trips no rules.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: landing
+  namespace: shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: landing
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: landing
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.27-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        volumeMounts:
+        - name: html
+          mountPath: /usr/share/nginx/html
+        - name: conf
+          mountPath: /etc/nginx/conf.d
+        resources:
+          requests: {cpu: 10m, memory: 16Mi}
+          limits: {memory: 64Mi}
+      volumes:
+      - name: html
+        configMap:
+          name: landing-html
+      - name: conf
+        configMap:
+          name: landing-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: landing
+  namespace: shop
+spec:
+  selector:
+    app.kubernetes.io/name: landing
+  ports:
+  - name: http
+    port: 80
+    targetPort: http

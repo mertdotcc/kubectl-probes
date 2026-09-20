@@ -1,0 +1,44 @@
+# localtest.me is public DNS that resolves to 127.0.0.1, so this works with no
+# /etc/hosts editing. See the README for the port-forward fallback if your
+# resolver will not answer for it.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shop
+  namespace: shop
+spec:
+  ingressClassName: nginx
+  rules:
+  # The front door is the explainer page, not podinfo: someone opening this
+  # cluster for the first time needs to be told what they are looking at
+  # before they are shown it.
+  - host: shop.localtest.me
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: landing
+            port:
+              number: 80
+  - host: web.localtest.me
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web
+            port:
+              number: 9898
+  - host: api.localtest.me
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api
+            port:
+              number: 9898
