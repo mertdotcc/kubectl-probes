@@ -27,6 +27,14 @@ A running or terminated instance of a workload. Pods are where runtime state and
 The default output: one row per Container with handler type, headline effective timing per probe, aggregated runtime state, and a finding count. Sorted alphabetically unless asked otherwise. Zero-pod workloads always appear.
 _Avoid_: List, summary, table
 
+**Summary**:
+The closing section of the Overview: probe coverage and the distribution of failure detection across the Containers the Overview covers, counted over the same scope. It reports facts only, never findings. It is shown by default and can be shown alone.
+_Avoid_: Stats, dashboard, report (which is the JSON or YAML export)
+
+**Coverage**:
+How many of the Containers in scope have a startup, readiness, or liveness probe, and how many have none.
+_Avoid_: Adoption, compliance
+
 **Inspection**:
 The detailed output for a single Workload: full probe configuration, effective timing in sentences, drift, per-pod runtime state, failure evidence, then findings.
 _Avoid_: Describe, detail view, drilldown
@@ -50,7 +58,7 @@ One of the three kubelet health checks on a container: startup, readiness, or li
 _Avoid_: Health check, healthcheck
 
 **Effective timing**:
-The practical durations derived from a probe's raw fields, such as time until the first check, the worst-case time to detect failure, the maximum startup budget, and the time until traffic can arrive.
+The practical durations derived from a probe's raw fields, such as time until the first check, the worst-case time to detect failure (**failure detection**: `periodSeconds × failureThreshold`), the maximum startup budget, and the time until traffic can arrive.
 _Avoid_: Computed settings, interpretation
 
 **Drift**:
