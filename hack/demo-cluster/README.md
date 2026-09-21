@@ -63,22 +63,23 @@ make heal          # put them back
 
 ## What is in it
 
-Ten authored workloads, plus ingress-nginx, plus the nine or so kind brings
-with it — so `kubectl probes -A` has something to say.
+Nine authored workloads, plus the nine or so kind brings with it, so `kubectl probes -A` has something to say.
 
 Probe configuration is deliberate. Each workload either demonstrates a rule or
 demonstrates probes done well, and the configurations are meant to look like
-code someone actually wrote rather than strawmen.
+code someone actually wrote rather than strawmen. `web`, `api` and `catalog`
+are [podinfo](https://github.com/stefanprodan/podinfo), a small test workload
+with real `/healthz` and `/readyz` endpoints and built-in fault injection,
+which is what `make chaos` drives.
 
 | Workload | Kind | Findings | What it shows |
 |---|---|---|---|
-| `shop/landing` | Deployment | — | The explainer page, nginx. Probes done well: readiness and liveness on separate endpoints, every timeout written down |
 | `shop/web` | Deployment | — | Probes done well: a startup probe covers the slow boot, readiness and liveness ask different questions, every timeout written down |
 | `shop/api` | Deployment | 1 | `timeout-at-default` — careful config that never got a liveness timeout |
 | `shop/catalog` | Deployment | 2 | `no-readiness-probe`, `timeout-at-default` |
 | `shop/postgres` | StatefulSet | 2 | `liveness-without-startup`, `timeout-exceeds-period` — a fixed delay standing in for a startup probe |
 | `shop/redis` | Deployment | 1 | `liveness-same-as-readiness` — one command answering both questions |
-| `shop/backup` | CronJob | 1 | A non-Deployment owner the plugin has to walk CronJob → Job → Pod to name |
+| `shop/backup` | CronJob | — | A non-Deployment owner the plugin has to walk CronJob → Job → Pod to name |
 | `observability/prometheus` | StatefulSet | 1 | `liveness-faster-than-readiness` — restarted on its way out of service |
 | `observability/grafana` | Deployment | — | Readiness only, no liveness, which is a legitimate choice |
 | `observability/node-exporter` | DaemonSet | 1 | `timeout-at-default`, on every node |
@@ -87,93 +88,7 @@ That covers all six configuration rules. The seventh,
 `probe-failures-recent`, needs a cluster that is actually failing — which is
 what `make chaos` is for.
 
-## In a browser
-
-| | |
-|---|---|
-| http://shop.localtest.me:8080 | **Start here.** A page explaining the cluster, the request path, and how to read the rest |
-| http://web.localtest.me:8080 | the frontend, podinfo, showing a live call through to `api` |
-| http://api.localtest.me:8080 | the backend on its own |
-| http://grafana.localtest.me:8080 | Grafana, anonymous access, Prometheus already wired up |
-| http://prometheus.localtest.me:8080 | Prometheus |
-
-`localtest.me` is public DNS that resolves to `127.0.0.1`, so in principle
-none of this needs `/etc/hosts` editing.
-
-In practice, **many home routers block it.** DNS rebinding protection refuses
-any answer pointing at a loopback or private address, and it is on by default
-on Fritz!Box and others. The symptom is `dig +short shop.localtest.me`
-returning nothing, and `nip.io` and `sslip.io` failing the same way. If that
-is you:
-
-```sh
-make hosts       # adds the four hostnames to /etc/hosts, once, with sudo
-```
-
-Or skip ingress entirely:
-
-```sh
-kubectl port-forward -n shop svc/web 9898:9898            # localhost:9898
-kubectl port-forward -n observability svc/grafana 3000:3000
-```
-
-### What you are looking at
-
-`shop.localtest.me` is a hand-written page that says all of this on screen —
-the request path, what each dot means, what to run next. It exists because
-podinfo's own UI has nowhere to put it: no way to label the dots or draw the
-path. If you only open one thing, open that.
-
-The `web` and `api` pages are [podinfo](https://github.com/stefanprodan/podinfo),
-a small Go app built to be a test workload for Kubernetes — the same one the
-Flux and Linkerd tutorials use. It does nothing useful on purpose. What it has
-is real `/healthz` and `/readyz` endpoints, Prometheus metrics, the ability to
-call a backend and draw the chain, and built-in fault injection, which is what
-`make chaos` drives.
-
-The request path behind `http://shop.localtest.me:8080`:
-
-```
-  your browser
-      │  Host: shop.localtest.me
-      ▼
-  /etc/hosts  ──▶ 127.0.0.1
-      │
-      ▼
-  colima VM        forwards host :8080
-      │
-      ▼
-  kind node        probes-demo-control-plane, extraPortMapping 8080 ─▶ :80
-      │
-      ▼
-  ingress-nginx    routes on the Host header
-      │              shop.localtest.me    ─▶ Service shop/web
-      │              api.localtest.me     ─▶ Service shop/api
-      │              grafana.localtest.me ─▶ Service observability/grafana
-      ▼
-  Service shop/web ──balances──▶ one of 2 web pods
-                                      │  PODINFO_BACKEND_URL
-                                      ▼
-                                 Service shop/api ──▶ one of 2 api pods
-```
-
-On the page itself:
-
-| What you see | What it is |
-|---|---|
-| The purple cuttlefish | podinfo's logo. Decoration. |
-| The title line | `PODINFO_UI_MESSAGE`, set in `manifests/shop/web.yaml` |
-| **Served by `web-…-mb26x`** | Which of the two `web` pods answered. **Refresh and it changes** — that is the Service load-balancing |
-| Two green dots | The service chain. Top is the `web` pod, bottom is the `api` pod it called. Green means the hop answered |
-| PING, and the number on it | Sends another request down the chain, and counts how many you have sent |
-
-Open `http://api.localtest.me:8080` and you get a **green** page with **one**
-dot: you reached the backend directly, and nothing sits behind it. The colour
-and the message are the fastest way to tell which service you are on.
-
-### Watching a probe do its job
-
-Open http://shop.localtest.me:8080, then in another terminal:
+## Watching a probe do its job
 
 ```sh
 make chaos
@@ -186,60 +101,16 @@ loop: restart counts climb and the evidence names the liveness probe.
 
 `web` is the interesting one. Patching its readiness probe starts a rolling
 update, and the new pod never becomes ready — so **the rollout stalls**. The
-two old pods are still there and still serving, which means the page keeps
-working and nothing is restarted. From outside, `web` looks fine. The plugin
+two old pods are still there and still serving, so nothing is restarted. From outside, `web` looks fine. The plugin
 shows `2/3` ready and marks the readiness column with `*`, meaning the running
 pods no longer match their own template. That is drift, and it is the failure
 people miss.
 
-### The Dashboard
-
-The repo also builds a browser surface, the Dashboard, that draws the same
-report as a diagram of the kubelet and its pods with a timeline of what the
-cluster reported. It is not in the released plugin, which is the CLI alone,
-and is built only on request. From the repository root, with `make chaos`
-applied so there is something to draw:
-
-```sh
-go build -tags dashboard .
-./kubectl-probes --context kind-probes-demo -n shop deploy/web --serve
-```
-
-Why it is kept but not shipped is in
-[ADR 0007](../../docs/adr/0007-the-released-plugin-is-the-cli-alone.md).
-
 ## When it goes wrong
 
-**`failed calling webhook "validate.nginx.ingress.kubernetes.io" ... connection
-refused`** during `make up`.
-
-ingress-nginx's controller reports Ready from a probe on `:10254`, while its
-admission webhook listens on `:8443` and starts accepting later. So the pod is
-Ready, the admission Service has a ready endpoint, and an `Ingress` apply is
-still refused. No condition or event marks the moment `:8443` comes up, so
-`scripts/apply.sh` retries rather than waiting. If you hit this on an older
-checkout, or it exhausts its retries:
-
-```sh
-make apply       # safe to re-run, and the way to recover a half-applied cluster
-```
-
-Everything except the two Ingresses will already be running; `make apply` is
-idempotent and finishes the job.
-
 **`make up` fails because the cluster already exists.** `make up` is composed
-of `cluster`, `ingress`, `apply`, `ready`. Run whichever one you need rather
+of `cluster`, `apply`, `ready`. Run whichever one you need rather
 than tearing down.
-
-**The browser cannot reach `shop.localtest.me` but the cluster looks fine.**
-DNS, not Kubernetes. Check with:
-
-```sh
-curl -H "Host: shop.localtest.me" http://localhost:8080/
-```
-
-A 200 there means everything works and only name resolution is missing — run
-`make hosts`. See the browser section above.
 
 **A platform or manifest error on the node image.** The image is pinned by
 digest. Drop to the plain tag in `kind.yaml` if your setup cannot resolve it:
@@ -258,7 +129,6 @@ stops matching what a reader gets tomorrow.
 | Prometheus | `prom/prometheus:v2.54.1` |
 | Grafana | `grafana/grafana:11.2.0` |
 | node-exporter | `prom/node-exporter:v1.8.2` |
-| ingress-nginx | `controller-v1.11.2` (`INGRESS_REF` in the Makefile) |
 | Kubernetes | `kindest/node:v1.37.0`, pinned by digest in `kind.yaml` |
 | kind | v0.33.0 (the version whose default node image is pinned above) |
 

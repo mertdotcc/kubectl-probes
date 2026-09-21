@@ -1,5 +1,7 @@
 # The Dashboard ships inside the plugin binary, with no JavaScript toolchain
 
+> **Superseded by [ADR 0008](0008-there-is-no-dashboard.md):** the Dashboard has been removed from the repo.
+
 The Dashboard is served by the same binary krew installs: `kubectl probes --serve` composes with every existing flag, binds a loopback address, prints the URL, and serves static assets embedded with `go:embed`. The browser side is plain ES modules, CSS and inline SVG, checked into the repo as written, with no bundler, no framework and no `package.json`. Updates reach the browser as whole v1alpha1 Report snapshots over Server-Sent Events, so the wire format is the one the CLI already publishes with `-o json`.
 
 ## Considered Options

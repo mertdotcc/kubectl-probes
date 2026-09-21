@@ -75,11 +75,6 @@ type options struct {
 	color         string
 	sort          string
 	noFindings    bool
-
-	// dashboard is --serve, which only a build with -tags dashboard has. In
-	// the released plugin it is empty and registers nothing. See
-	// docs/adr/0007-the-released-plugin-is-the-cli-alone.md.
-	dashboard dashboard
 }
 
 func main() {
@@ -110,7 +105,7 @@ The plugin only reads from the API server. It never exercises a probe.`,
   kubectl probes -A -o wide --no-findings
 
   # A manifest that has not been applied yet
-  kubectl probes -f deploy.yaml -o json` + dashboardExample,
+  kubectl probes -f deploy.yaml -o json`,
 		Args:          cobra.MaximumNArgs(1),
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -148,7 +143,6 @@ The plugin only reads from the API server. It never exercises a probe.`,
 		fmt.Sprintf("Order of the Overview rows, one of %s", strings.Join(sortOrders, "|")))
 	flags.BoolVar(&o.noFindings, "no-findings", false,
 		"Report facts only, without findings")
-	o.dashboard.addFlags(flags)
 	addKlogFlags(flags)
 
 	// Cobra names the command after the first word of Use, which is "kubectl"
@@ -171,13 +165,6 @@ func (o *options) run(cmd *cobra.Command, args []string) error {
 	}
 	setupColor(o.color)
 
-	// A build with the Dashboard can be asked to serve the report to a
-	// browser instead, which is a run of its own. The released plugin never
-	// is, and carries on to print.
-	if served, err := o.serve(cmd, args); served {
-		return err
-	}
-
 	result, err := collect.Collect(cmd.Context(), o.collectOptions(args))
 	if err != nil {
 		return err
@@ -193,9 +180,7 @@ func (o *options) run(cmd *cobra.Command, args []string) error {
 	return o.write(cmd.OutOrStdout(), cmd.ErrOrStderr(), report, len(args) > 0)
 }
 
-// collectOptions is what the flags mean to the collect package, shared by the
-// one read a printed run makes and the watch a served one keeps, so the two
-// can never disagree about which workloads they are about.
+// collectOptions is what the flags mean to the collect package.
 func (o *options) collectOptions(args []string) collect.Options {
 	return collect.Options{
 		ConfigFlags:   o.configFlags,
@@ -245,9 +230,6 @@ func (o *options) analyzeOptions() analyze.Options {
 
 func (o *options) validate() error {
 	if err := oneOf("--output", o.output, outputFormats); err != nil {
-		return err
-	}
-	if err := o.dashboard.validate(o.output); err != nil {
 		return err
 	}
 	if err := oneOf("--color", o.color, colorModes); err != nil {

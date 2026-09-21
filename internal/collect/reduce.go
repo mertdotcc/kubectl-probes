@@ -16,9 +16,6 @@ import (
 
 // scope is what a run covers: the namespace to read, the pod labels to read it
 // by, and the workloads the positional argument named.
-//
-// Collect and Watch both resolve it here, so a watch can never disagree with a
-// one-off read about which pods are in the report.
 type scope struct {
 	namespace string
 	selector  string
@@ -48,10 +45,7 @@ func resolveScope(o Options) (*scope, error) {
 // up to the top-most owner, the grouping, and the named workloads no pod
 // resolved to.
 //
-// Collect makes one and uses it once. Watch keeps one for the life of the
-// watch, so the owners it has already read stay read: a pod that has not
-// changed cannot have changed owner, and a template change only matters for
-// drift once a new pod arrives to differ from it.
+// Collect makes one and uses it once.
 type reducer struct {
 	scope  *scope
 	walker *ownerWalker
