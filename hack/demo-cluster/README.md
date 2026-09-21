@@ -192,6 +192,22 @@ shows `2/3` ready and marks the readiness column with `*`, meaning the running
 pods no longer match their own template. That is drift, and it is the failure
 people miss.
 
+### The Dashboard
+
+The repo also builds a browser surface, the Dashboard, that draws the same
+report as a diagram of the kubelet and its pods with a timeline of what the
+cluster reported. It is not in the released plugin, which is the CLI alone,
+and is built only on request. From the repository root, with `make chaos`
+applied so there is something to draw:
+
+```sh
+go build -tags dashboard .
+./kubectl-probes --context kind-probes-demo -n shop deploy/web --serve
+```
+
+Why it is kept but not shipped is in
+[ADR 0007](../../docs/adr/0007-the-released-plugin-is-the-cli-alone.md).
+
 ## When it goes wrong
 
 **`failed calling webhook "validate.nginx.ingress.kubernetes.io" ... connection
