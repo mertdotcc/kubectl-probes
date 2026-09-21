@@ -25,15 +25,9 @@ spec:
         - name: http
           containerPort: 9898
         env:
-        # What makes the browser page show a real call to another service.
+        # web calls api, so the two are a real service chain.
         - name: PODINFO_BACKEND_URL
           value: http://api.shop.svc.cluster.local:9898/echo
-        - name: PODINFO_UI_MESSAGE
-          value: "FRONTEND — shop/web · dots: this pod, then the api pod it called"
-        # A different colour from api, so you can tell at a glance which
-        # service you are looking at.
-        - name: PODINFO_UI_COLOR
-          value: "#34577c"
         startupProbe:
           httpGet:
             path: /healthz

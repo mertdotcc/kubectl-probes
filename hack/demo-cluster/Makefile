@@ -3,32 +3,21 @@
 
 CLUSTER      := probes-demo
 KUBECTL      := kubectl --context kind-$(CLUSTER)
-INGRESS_REF  := controller-v1.11.2
-INGRESS_URL  := https://raw.githubusercontent.com/kubernetes/ingress-nginx/$(INGRESS_REF)/deploy/static/provider/kind/deploy.yaml
 REPO_ROOT    := $(shell git rev-parse --show-toplevel)
-HOSTNAMES    := shop.localtest.me web.localtest.me api.localtest.me grafana.localtest.me prometheus.localtest.me
 
 .DEFAULT_GOAL := help
-.PHONY: help up cluster ingress apply ready down stop start chaos heal probes build status urls hosts
+.PHONY: help up cluster apply ready down stop start chaos heal probes build status
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  \033[36m%-8s\033[0m %s\n", $$1, $$2}'
 
-up: cluster ingress apply ready urls ## Create the cluster and everything in it
+up: cluster apply ready ## Create the cluster and everything in it
 
 cluster: ## Just the kind cluster
 	kind create cluster --config kind.yaml
 
-ingress: ## Just ingress-nginx
-	@echo "==> ingress-nginx ($(INGRESS_REF))"
-	$(KUBECTL) apply -f $(INGRESS_URL)
-	$(KUBECTL) wait --namespace ingress-nginx \
-		--for=condition=Ready pod \
-		--selector=app.kubernetes.io/component=controller \
-		--timeout=180s
-
-apply: ## Just the workloads. Safe to re-run; this is how you recover a half-applied cluster
-	./scripts/apply.sh
+apply: ## Just the workloads. Safe to re-run
+	$(KUBECTL) apply -k manifests
 
 ready: ## Wait for the shop to come up
 	@echo "==> waiting for the shop"
@@ -59,24 +48,3 @@ probes: build ## Run the plugin against the demo cluster
 
 status: ## What is actually running
 	$(KUBECTL) get pods -A -o wide
-
-hosts: ## Point the demo hostnames at 127.0.0.1 (needs sudo; for resolvers that block localtest.me)
-	@if grep -qx "127.0.0.1 $(HOSTNAMES)" /etc/hosts; then \
-		echo "already in /etc/hosts"; \
-	elif grep -q "localtest.me" /etc/hosts; then \
-		sudo sed -i '' '/localtest\.me/d' /etc/hosts && \
-		echo "127.0.0.1 $(HOSTNAMES)" | sudo tee -a /etc/hosts >/dev/null && \
-		echo "refreshed (the hostname list changed)"; \
-	else \
-		echo "127.0.0.1 $(HOSTNAMES)" | sudo tee -a /etc/hosts >/dev/null && echo "added"; \
-	fi
-
-urls: ## Where to point a browser
-	@echo
-	@echo "  shop        http://shop.localtest.me:8080"
-	@echo "  api         http://api.localtest.me:8080"
-	@echo "  grafana     http://grafana.localtest.me:8080"
-	@echo "  prometheus  http://prometheus.localtest.me:8080"
-	@echo
-	@echo "  If localtest.me does not resolve for you, see README.md."
-	@echo
