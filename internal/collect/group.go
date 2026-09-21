@@ -58,6 +58,12 @@ func group(items []owned, events map[types.UID][]corev1.Event) []Workload {
 		key := podKey(item.pod)
 		if item.owner != nil {
 			key = ownerKey(item.owner)
+			// A cluster-scoped owner, which is a Node for a static pod, has
+			// no namespace of its own, so the workload takes its pod's: that
+			// is the namespace -n narrows to it by.
+			if key.namespace == "" {
+				key.namespace = item.pod.Namespace
+			}
 		}
 
 		workload, seen := workloads[key]
