@@ -77,8 +77,7 @@ func collectCluster(ctx context.Context, o Options) (*Result, error) {
 }
 
 // collectFrom is the read itself, kept apart from the clients it reads through
-// so that Watch drives the same reduction from an informer cache, and a test
-// drives it from a fake one.
+// so that a test drives it from a fake one.
 func collectFrom(ctx context.Context, client kubernetes.Interface, r *reducer) (*Result, error) {
 	pods, err := listPods(ctx, client, r.scope.namespace, r.scope.selector)
 	if err != nil {
@@ -94,7 +93,7 @@ func collectFrom(ctx context.Context, client kubernetes.Interface, r *reducer) (
 	return r.result(items, events), nil
 }
 
-// restConfig is how both Collect and Watch talk to the API server.
+// restConfig is how Collect talks to the API server.
 func restConfig(o Options) (*rest.Config, error) {
 	config, err := o.ConfigFlags.ToRESTConfig()
 	if err != nil {

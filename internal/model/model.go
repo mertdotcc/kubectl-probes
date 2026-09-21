@@ -132,30 +132,12 @@ func (c *Container) SetProbe(t ProbeType, d *ProbeDetail) bool {
 type ProbeDetail struct {
 	Config *Probe  `json:"config,omitempty"`
 	Timing *Timing `json:"timing,omitempty"`
-	// Counts is the reserved slot for the kubelet's own prober_probe_total
-	// counters, the one per-check signal a real cluster has. Reading them
-	// needs RBAC this plugin does not ask for, so nothing sets this today and
-	// no surface prints it. See issue #38 and ADR-0005.
-	Counts *ProbeCounts `json:"counts,omitempty"`
 	// Drifted records that the running pod's configuration differs from the
 	// workload template's, which is a reason to investigate on its own.
 	Drifted bool `json:"drifted,omitempty"`
 	// Template is the template-side configuration, carried only when it
 	// differs from Config.
 	Template *Probe `json:"template,omitempty"`
-}
-
-// ProbeCounts is how often the kubelet reports a probe has succeeded and
-// failed, and when it was last asked. It is the only per-check evidence that
-// exists outside a simulation, and it is not collected yet.
-type ProbeCounts struct {
-	Success int64 `json:"success,omitempty"`
-	Failure int64 `json:"failure,omitempty"`
-	// Unknown counts the checks the kubelet could not classify.
-	Unknown int64 `json:"unknown,omitempty"`
-	// ObservedAt is when the counters were read, which is not when any of the
-	// checks they count happened.
-	ObservedAt *time.Time `json:"observedAt,omitempty"`
 }
 
 // Probe is a probe's configuration exactly as the spec carries it. The timing

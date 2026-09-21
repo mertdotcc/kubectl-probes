@@ -1,5 +1,7 @@
 # The released plugin is the CLI alone; the Dashboard is built only when asked for
 
+> **Superseded by [ADR 0008](0008-there-is-no-dashboard.md):** the Dashboard has been removed from the repo.
+
 [ADR 0006](0006-the-dashboard-ships-inside-the-plugin-binary.md) decided how to build the Dashboard and, in its last consequence, that it ships in v0.1.0 as a release gate. It was right about the how and wrong about the when. The Dashboard now exists and has been run against the demo cluster mid-chaos, and what it is good for is narrower than the ticket assumed: for a multi-replica workload whose probes are failing right now it shows two things the terminal cannot, which node the failures are on and whether they cluster in time, and for everything else `kubectl probes` is denser, faster and already finished.
 
 Meanwhile the first release has one job, which is to get through krew review and be worth keeping once installed. What is being judged there is a plugin that does one thing well. So the released binary is the CLI alone: `internal/serve` and the `--serve` flag move behind a `dashboard` build tag, the default build compiles no HTTP server and embeds no browser assets, and the released plugin has no such flag to find.

@@ -26,27 +26,6 @@ jobs:
     - name: go vet
       run: go vet ./...
 
-    # The Dashboard is not in the released plugin, but it is kept so that it
-    # still works when it is next wanted, and code behind a tag that nothing
-    # compiles is code that rots. See ADR 0007.
-    - name: go test, with the Dashboard
-      run: go test -tags dashboard ./...
-
-    - name: go vet, with the Dashboard
-      run: go vet -tags dashboard ./...
-
-    # The released binary is the CLI alone, and what keeps it that way is that
-    # nothing in the default build imports the Dashboard's server. Checked
-    # both ways, so that a renamed package cannot make this pass by accident.
-    - name: the default build has no Dashboard
-      run: |
-        pkg=github.com/mertdotcc/kubectl-probes/internal/serve
-        if go list -deps . | grep -qx "$pkg"; then
-          echo "$pkg is reachable from the default build"
-          exit 1
-        fi
-        go list -tags dashboard -deps . | grep -qx "$pkg"
-
     - name: gofmt
       run: |
         unformatted=$(gofmt -l .)

@@ -1,5 +1,7 @@
 # The Dashboard draws only what the cluster reported, never a probe it did not see
 
+> **Superseded by [ADR 0008](0008-there-is-no-dashboard.md):** the Dashboard has been removed from the repo.
+
 The plugin grows a browser surface, the Dashboard, that animates probe behaviour the way Sam Rose's [ngrok probes essay](https://ngrok.com/blog/probes) does: a kubelet, pods, containers changing colour, failures arriving as pulses, a timeline you can scrub. Those essays run on [webernetes](https://github.com/ngrok/webernetes), a simulated cluster with a simulated clock, which is why they can show every probe tick. A real cluster shows none of them: a successful probe leaves no trace in the API server, and a failed one surfaces only as a deduplicated, rate-limited `Unhealthy` event or a flipped `ready` flag. We decided the Dashboard animates only state the cluster actually reported, at the timestamps it reported it, and never draws a probe request it did not observe. It is an operational view of a live cluster, not a teaching simulation.
 
 ## Considered Options
