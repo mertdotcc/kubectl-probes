@@ -116,3 +116,36 @@ spec:
 		t.Errorf("workloads are not sorted by namespace: %s then %s", got[0].Namespace, got[1].Namespace)
 	}
 }
+
+// A static pod's owner is its Node, which has no namespace, while the pod
+// itself is in one. The workload takes the pod's, because that is the
+// namespace -n narrows to it by.
+func TestGroupGivesAClusterScopedOwnerItsPodsNamespace(t *testing.T) {
+	node := object(t, `
+apiVersion: v1
+kind: Node
+metadata: {name: control-plane, uid: node-uid}
+`)
+
+	etcd := pod("etcd-control-plane", "uid-etcd", nil)
+	etcd.Namespace = "kube-system"
+	other := pod("agent-control-plane", "uid-agent", nil)
+	other.Namespace = "monitoring"
+
+	got := group([]owned{
+		{pod: etcd, owner: node},
+		{pod: other, owner: node},
+	}, nil)
+
+	if len(got) != 2 {
+		t.Fatalf("group returned %d workloads, want one per namespace the Node's pods are in", len(got))
+	}
+	if got[0].Namespace != "kube-system" || got[1].Namespace != "monitoring" {
+		t.Errorf("namespaces = %q, %q, want kube-system, monitoring", got[0].Namespace, got[1].Namespace)
+	}
+	for _, w := range got {
+		if w.GroupKind.Kind != "Node" || w.Name != "control-plane" {
+			t.Errorf("workload = %s/%s, want the Node", w.GroupKind.Kind, w.Name)
+		}
+	}
+}
