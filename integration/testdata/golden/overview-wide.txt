@@ -8,3 +8,41 @@ pod/debug                     debug        -           -                        
 rollout.argoproj.io/checkout  checkout     -           -                         grpc:30s     grpc :9000 checkout.Health                           -           -                                   1/1    0         0         1         -
 sts/cache                     cache        -           -                         tcp:30s      tcp :redis                                           -           -                                   0/0    0         0         0         -
 sts/db                        db           -           -                         exec:30s     exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1  tcp:10s     tcp :5432                           1/2    7         13        4         -
+
+Summary: 9 containers in 8 workloads
+
+Coverage
+  readiness   6 / 7   86%   (2 Job and CronJob containers not counted)
+  liveness    4 / 9   44%
+  startup     2 / 9   22%
+  none        2 / 9   22%
+
+Readiness failure detection (6 containers)
+  P100 (max)  1m30s  deploy/api  api
+  P99         1m30s  deploy/api  api
+  P90         1m30s  deploy/api  api
+  P50         30s    sts/cache   cache
+  P10         30s    deploy/web  web
+  P0 (min)    30s    deploy/web  web
+
+    ≤10s                          0
+  10–30s    ████████████████████  4
+  30s–1m    █████                 1
+    1–2m    █████                 1
+    2–5m                          0
+     >5m                          0
+
+Liveness failure detection (4 containers)
+  P100 (max)  1m30s  cj/nightly  report
+  P99         1m30s  cj/nightly  report
+  P90         1m30s  cj/nightly  report
+  P50         30s    deploy/api  api
+  P10         10s    sts/db      db
+  P0 (min)    10s    sts/db      db
+
+    ≤10s    ████████████████████  1
+  10–30s    ████████████████████  1
+  30s–1m    ████████████████████  1
+    1–2m    ████████████████████  1
+    2–5m                          0
+     >5m                          0

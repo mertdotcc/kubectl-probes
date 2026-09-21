@@ -55,6 +55,14 @@ func TestMain(m *testing.M) {
 func TestPipeline(t *testing.T) {
 	report := pipeline(t, analyze.Options{})
 
+	// The Overview carries the Summary unless --summary=hide asks it not to,
+	// and --summary=only is the Summary with no workloads beside it. The
+	// Inspection never has one, so it is built from the report without.
+	overview := *report
+	overview.Summary = analyze.Summarize(report)
+	summaryOnly := overview
+	summaryOnly.Workloads = nil
+
 	tests := []struct {
 		name   string
 		golden string
@@ -68,7 +76,15 @@ func TestPipeline(t *testing.T) {
 			golden: "overview.txt",
 			notes:  "* running config differs from workload template\n",
 			write: func(out, errOut io.Writer) error {
-				return render.Overview(out, errOut, report, render.Options{})
+				return render.Overview(out, errOut, &overview, render.Options{})
+			},
+		},
+		{
+			// The notes explain marks in the table, and there is no table.
+			name:   "summary only",
+			golden: "summary-only.txt",
+			write: func(out, errOut io.Writer) error {
+				return render.Overview(out, errOut, &overview, render.Options{SummaryOnly: true})
 			},
 		},
 		{
@@ -76,21 +92,28 @@ func TestPipeline(t *testing.T) {
 			golden: "overview-wide.txt",
 			notes:  "* running config differs from workload template\n",
 			write: func(out, errOut io.Writer) error {
-				return render.Overview(out, errOut, report, render.Options{Wide: true})
+				return render.Overview(out, errOut, &overview, render.Options{Wide: true})
 			},
 		},
 		{
 			name:   "json report",
 			golden: "report.json",
 			write: func(out, _ io.Writer) error {
-				return report.Encode(out, model.FormatJSON)
+				return overview.Encode(out, model.FormatJSON)
+			},
+		},
+		{
+			name:   "json summary only",
+			golden: "summary-only.json",
+			write: func(out, _ io.Writer) error {
+				return summaryOnly.Encode(out, model.FormatJSON)
 			},
 		},
 		{
 			name:   "yaml report",
 			golden: "report.yaml",
 			write: func(out, _ io.Writer) error {
-				return report.Encode(out, model.FormatYAML)
+				return overview.Encode(out, model.FormatYAML)
 			},
 		},
 		{

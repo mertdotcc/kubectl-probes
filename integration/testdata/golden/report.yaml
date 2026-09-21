@@ -1,6 +1,114 @@
 apiVersion: probes.kubectl.dev/v1alpha1
 generatedAt: "2026-03-01T12:00:00Z"
 kind: ProbeReport
+summary:
+  containers: 9
+  coverage:
+    liveness:
+      count: 4
+      of: 9
+    none:
+      count: 2
+      of: 9
+    readiness:
+      count: 6
+      of: 7
+    readinessExcluded: 2
+    startup:
+      count: 2
+      of: 9
+  failureDetection:
+    liveness:
+      buckets:
+      - count: 1
+        upTo: 10s
+      - count: 1
+        upTo: 30s
+      - count: 1
+        upTo: 1m0s
+      - count: 1
+        upTo: 2m0s
+      - count: 0
+        upTo: 5m0s
+      - count: 0
+      containers: 4
+      percentiles:
+      - container: report
+        failureDetection: 1m30s
+        namespace: prod
+        percentile: 100
+        workload: cj/nightly
+      - container: report
+        failureDetection: 1m30s
+        namespace: prod
+        percentile: 99
+        workload: cj/nightly
+      - container: report
+        failureDetection: 1m30s
+        namespace: prod
+        percentile: 90
+        workload: cj/nightly
+      - container: api
+        failureDetection: 30s
+        namespace: prod
+        percentile: 50
+        workload: deploy/api
+      - container: db
+        failureDetection: 10s
+        namespace: prod
+        percentile: 10
+        workload: sts/db
+      - container: db
+        failureDetection: 10s
+        namespace: prod
+        percentile: 0
+        workload: sts/db
+    readiness:
+      buckets:
+      - count: 0
+        upTo: 10s
+      - count: 4
+        upTo: 30s
+      - count: 1
+        upTo: 1m0s
+      - count: 1
+        upTo: 2m0s
+      - count: 0
+        upTo: 5m0s
+      - count: 0
+      containers: 6
+      percentiles:
+      - container: api
+        failureDetection: 1m30s
+        namespace: prod
+        percentile: 100
+        workload: deploy/api
+      - container: api
+        failureDetection: 1m30s
+        namespace: prod
+        percentile: 99
+        workload: deploy/api
+      - container: api
+        failureDetection: 1m30s
+        namespace: prod
+        percentile: 90
+        workload: deploy/api
+      - container: cache
+        failureDetection: 30s
+        namespace: prod
+        percentile: 50
+        workload: sts/cache
+      - container: web
+        failureDetection: 30s
+        namespace: prod
+        percentile: 10
+        workload: deploy/web
+      - container: web
+        failureDetection: 30s
+        namespace: prod
+        percentile: 0
+        workload: deploy/web
+  workloads: 8
 workloads:
 - containers:
   - findings:
