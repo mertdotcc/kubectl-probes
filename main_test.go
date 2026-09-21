@@ -187,6 +187,74 @@ func TestRunNoFindings(t *testing.T) {
 	}
 }
 
+// --summary means the same in every output format: show is the workloads and
+// the Summary, only is the Summary alone, and hide is the workloads alone.
+func TestRunSummary(t *testing.T) {
+	tests := []struct {
+		summary       string
+		workloads     bool
+		summaryInside bool
+	}{
+		{summary: "", workloads: true, summaryInside: true},
+		{summary: "show", workloads: true, summaryInside: true},
+		{summary: "only", summaryInside: true},
+		{summary: "hide", workloads: true},
+	}
+
+	for _, tt := range tests {
+		name := tt.summary
+		if name == "" {
+			name = "default"
+		}
+		t.Run(name, func(t *testing.T) {
+			args := threeWorkloads
+			if tt.summary != "" {
+				args = append([]string{"--summary", tt.summary}, args...)
+			}
+
+			table, stderr := run(t, args...)
+			if got := strings.Contains(table, "WORKLOAD"); got != tt.workloads {
+				t.Errorf("the table is printed = %v, want %v:\n%s", got, tt.workloads, table)
+			}
+			if got := strings.Contains(table, "Summary: 3 containers in 3 workloads"); got != tt.summaryInside {
+				t.Errorf("the Summary is printed = %v, want %v:\n%s", got, tt.summaryInside, table)
+			}
+			if stderr != "" {
+				t.Errorf("notes = %q, want none", stderr)
+			}
+
+			for _, format := range []string{"json", "yaml"} {
+				report := decode(t, format, mustRun(t, append([]string{"-o", format}, args...)...))
+				if got := len(report.Workloads) > 0; got != tt.workloads {
+					t.Errorf("-o %s carries workloads = %v, want %v", format, got, tt.workloads)
+				}
+				if got := report.Summary != nil; got != tt.summaryInside {
+					t.Errorf("-o %s carries a summary = %v, want %v", format, got, tt.summaryInside)
+				}
+			}
+		})
+	}
+}
+
+// The Inspection is about one workload, so it never has a Summary, whatever
+// --summary asks for and in whichever format.
+func TestRunInspectionHasNoSummary(t *testing.T) {
+	for _, summary := range []string{"show", "only"} {
+		args := append([]string{"deploy/api", "--summary", summary}, oneWorkload...)
+
+		stdout, _ := run(t, args...)
+		if !strings.Contains(stdout, "container api") || strings.Contains(stdout, "Summary:") {
+			t.Errorf("--summary=%s on the Inspection printed:\n%s", summary, stdout)
+		}
+
+		report := decode(t, "json", mustRun(t, append([]string{"-o", "json"}, args...)...))
+		if report.Summary != nil || len(report.Workloads) != 1 {
+			t.Errorf("--summary=%s -o json on the Inspection carries a summary %v and %d workloads, want none and 1",
+				summary, report.Summary, len(report.Workloads))
+		}
+	}
+}
+
 // A file with nothing probe-bearing in it is not an error. The note goes to
 // stderr so that a pipe carries the table and nothing else.
 func TestRunNoWorkloads(t *testing.T) {
@@ -210,6 +278,7 @@ func TestRunRejectsUnknownFlagValues(t *testing.T) {
 		{name: "output", args: []string{"-o", "bogus"}, want: `invalid value "bogus" for --output`},
 		{name: "color", args: []string{"-c", "bogus"}, want: `invalid value "bogus" for --color`},
 		{name: "sort", args: []string{"--sort", "bogus"}, want: `invalid value "bogus" for --sort`},
+		{name: "summary", args: []string{"--summary=bogus"}, want: `invalid value "bogus" for --summary`},
 	}
 
 	for _, tt := range tests {
@@ -282,11 +351,15 @@ func decode(t *testing.T, format, in string) *model.Report {
 }
 
 // workloadRows are the table's rows without its header, and workloadColumn is
-// the workload each one names, which is the order the rows came in.
+// the workload each one names, which is the order the rows came in. The table
+// ends at the blank line the Summary follows.
 func workloadRows(table string) []string {
 	var rows []string
 	for _, line := range strings.Split(strings.TrimSpace(table), "\n") {
-		if line != "" && !strings.HasPrefix(line, "WORKLOAD") && !strings.HasPrefix(line, "NAMESPACE") {
+		if line == "" {
+			break
+		}
+		if !strings.HasPrefix(line, "WORKLOAD") && !strings.HasPrefix(line, "NAMESPACE") {
 			rows = append(rows, line)
 		}
 	}
