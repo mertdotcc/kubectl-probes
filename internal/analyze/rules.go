@@ -63,6 +63,9 @@ type ruleInput struct {
 	failures *int32
 	// failing lists the probes those events name, in ProbeTypes order.
 	failing []model.ProbeType
+	// batch is whether the container belongs to a Job or CronJob, whose pods
+	// run to completion and are sent no traffic.
+	batch bool
 }
 
 // findingsFor runs every rule against one container.
@@ -103,9 +106,10 @@ func ruleInputFor(configured *corev1.Container, reported *model.Container) ruleI
 
 // noReadinessProbe fires for a container that never tells the kubelet whether
 // it can serve, sidecars included: a sidecar that is not ready holds its whole
-// pod out of service.
+// pod out of service. A Job's containers are left alone, because nothing sends
+// them traffic and readiness has no one to tell.
 func noReadinessProbe(c ruleInput) []model.Finding {
-	if c.probes[model.ProbeReadiness] != nil {
+	if c.probes[model.ProbeReadiness] != nil || c.batch {
 		return nil
 	}
 	return finding(ruleNoReadinessProbe,

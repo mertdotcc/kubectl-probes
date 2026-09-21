@@ -471,3 +471,36 @@ func TestAnalyzeWithoutWorkloads(t *testing.T) {
 		t.Errorf("APIVersion = %q, want it stamped even on an empty report", report.APIVersion)
 	}
 }
+
+// A Job's pods run to completion and nothing sends them traffic, so readiness
+// has no consumer there and no-readiness-probe has nothing to say. A CronJob
+// is the same pods one owner further up.
+func TestNoReadinessProbeSkipsBatchWorkloads(t *testing.T) {
+	template := specFrom(t, `
+containers:
+- name: backup
+  image: backup:1
+`)
+	for _, kind := range []string{"Job", "CronJob", "Deployment"} {
+		t.Run(kind, func(t *testing.T) {
+			group := "batch"
+			if kind == "Deployment" {
+				group = "apps"
+			}
+			report := Analyze(&collect.Result{Workloads: []collect.Workload{{
+				GroupKind: schema.GroupKind{Group: group, Kind: kind},
+				Name:      "backup",
+				Namespace: "prod",
+				Template:  template,
+			}}}, generatedAt, Options{})
+
+			var fired bool
+			for _, finding := range report.Workloads[0].Containers[0].Findings {
+				fired = fired || finding.Rule == ruleNoReadinessProbe
+			}
+			if want := kind == "Deployment"; fired != want {
+				t.Errorf("no-readiness-probe fired = %v on a %s, want %v", fired, kind, want)
+			}
+		})
+	}
+}

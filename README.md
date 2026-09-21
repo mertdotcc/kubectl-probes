@@ -30,11 +30,11 @@ kubectl probes -A -o json | jq -r '.workloads[] | .displayName as $w
 ```console
 $ kubectl probes
 WORKLOAD                      CONTAINER    STARTUP     READINESS    LIVENESS    READY  RESTARTS  FAILURES  FINDINGS
-cj/nightly                    report       -           -            exec:1m30s  1/1    0         0         3
+cj/nightly                    report       -           -            exec:1m30s  1/1    0         0         2
 deploy/api                    api          http:2m30s  http:1m30s*  http:30s    2/2    0         0         3
 deploy/web                    istio-proxy  http:1m     http:1m      -           1/1    1         2         2
 deploy/web                    web          -           tcp:30s      tcp:1m      1/1    0         0         4
-job/import                    import       -           -            -           1/1    0         0         1
+job/import                    import       -           -            -           1/1    0         0         0
 pod/debug                     debug        -           -            -           1/1    0         0         1
 rollout.argoproj.io/checkout  checkout     -           grpc:30s     -           1/1    0         0         1
 sts/cache                     cache        -           tcp:30s      -           0/0    0         0         0

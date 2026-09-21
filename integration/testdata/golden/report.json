@@ -450,12 +450,6 @@
                 }
               ]
             }
-          ],
-          "findings": [
-            {
-              "rule": "no-readiness-probe",
-              "message": "No readiness probe is configured, so the kubelet reports this container ready the moment it starts and traffic arrives from then on."
-            }
           ]
         }
       ]
@@ -518,10 +512,6 @@
             }
           ],
           "findings": [
-            {
-              "rule": "no-readiness-probe",
-              "message": "No readiness probe is configured, so the kubelet reports this container ready the moment it starts and traffic arrives from then on."
-            },
             {
               "rule": "liveness-without-startup",
               "message": "Liveness waits 1m0s before its first check and there is no startup probe, so a container slower than that to come up is restarted while it is still starting."
