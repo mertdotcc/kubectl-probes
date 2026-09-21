@@ -57,10 +57,18 @@ const (
 	sortSeverity = "severity"
 )
 
+// Values accepted by --summary.
+const (
+	summaryShow = "show"
+	summaryOnly = "only"
+	summaryHide = "hide"
+)
+
 var (
 	outputFormats = []string{outputTable, outputWide, outputJSON, outputYAML}
 	colorModes    = []string{colorAuto, colorAlways, colorNever}
 	sortOrders    = []string{sortName, sortSeverity}
+	summaryModes  = []string{summaryShow, summaryOnly, summaryHide}
 )
 
 // options is everything the root command accepts, in one place, so the
@@ -74,6 +82,7 @@ type options struct {
 	output        string
 	color         string
 	sort          string
+	summary       string
 	noFindings    bool
 }
 
@@ -103,6 +112,9 @@ The plugin only reads from the API server. It never exercises a probe.`,
 
   # Every namespace, widest table, no opinions
   kubectl probes -A -o wide --no-findings
+
+  # Probe coverage and failure detection across the cluster
+  kubectl probes -A --summary=only
 
   # A manifest that has not been applied yet
   kubectl probes -f deploy.yaml -o json`,
@@ -141,6 +153,8 @@ The plugin only reads from the API server. It never exercises a probe.`,
 		fmt.Sprintf("When to colorize output, one of %s", strings.Join(colorModes, "|")))
 	flags.StringVar(&o.sort, "sort", sortName,
 		fmt.Sprintf("Order of the Overview rows, one of %s", strings.Join(sortOrders, "|")))
+	flags.StringVar(&o.summary, "summary", summaryShow,
+		fmt.Sprintf("Coverage and failure detection after the Overview, one of %s", strings.Join(summaryModes, "|")))
 	flags.BoolVar(&o.noFindings, "no-findings", false,
 		"Report facts only, without findings")
 	addKlogFlags(flags)
@@ -197,14 +211,23 @@ func (o *options) collectOptions(args []string) collect.Options {
 // named one gets. A run that named nothing, or one whose argument turned out
 // to cover more than one workload, gets the Overview: there is no reading of
 // the Inspection that covers two workloads at once.
+//
+// Only the Overview has a Summary, and --summary shapes the Report before it
+// is encoded, so the flag means the same in the table as in JSON and YAML.
 func (o *options) write(out, errOut io.Writer, report *model.Report, named bool) error {
-	switch o.output {
-	case outputJSON:
-		return report.Encode(out, model.FormatJSON)
-	case outputYAML:
-		return report.Encode(out, model.FormatYAML)
+	inspection := named && len(report.Workloads) == 1
+	if !inspection && o.summary != summaryHide {
+		report.Summary = analyze.Summarize(report)
 	}
-	if named && len(report.Workloads) == 1 {
+
+	switch o.output {
+	case outputJSON, outputYAML:
+		if !inspection && o.summary == summaryOnly {
+			report.Workloads = nil
+		}
+		return report.Encode(out, model.Format(o.output))
+	}
+	if inspection {
 		return render.Inspection(out, errOut, report)
 	}
 	return render.Overview(out, errOut, report, o.renderOptions())
@@ -216,6 +239,7 @@ func (o *options) renderOptions() render.Options {
 		AllNamespaces: o.allNamespaces,
 		Wide:          o.output == outputWide,
 		Sort:          render.SortOrder(o.sort),
+		SummaryOnly:   o.summary == summaryOnly,
 	}
 }
 
@@ -235,7 +259,10 @@ func (o *options) validate() error {
 	if err := oneOf("--color", o.color, colorModes); err != nil {
 		return err
 	}
-	return oneOf("--sort", o.sort, sortOrders)
+	if err := oneOf("--sort", o.sort, sortOrders); err != nil {
+		return err
+	}
+	return oneOf("--summary", o.summary, summaryModes)
 }
 
 func oneOf(flag, value string, allowed []string) error {

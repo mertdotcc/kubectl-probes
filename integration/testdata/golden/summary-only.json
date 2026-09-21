@@ -1,0 +1,174 @@
+{
+  "apiVersion": "probes.kubectl.dev/v1alpha1",
+  "kind": "ProbeReport",
+  "generatedAt": "2026-03-01T12:00:00Z",
+  "summary": {
+    "containers": 9,
+    "workloads": 8,
+    "coverage": {
+      "startup": {
+        "count": 2,
+        "of": 9
+      },
+      "readiness": {
+        "count": 6,
+        "of": 7
+      },
+      "liveness": {
+        "count": 4,
+        "of": 9
+      },
+      "none": {
+        "count": 2,
+        "of": 9
+      },
+      "readinessExcluded": 2
+    },
+    "failureDetection": {
+      "readiness": {
+        "containers": 6,
+        "percentiles": [
+          {
+            "percentile": 100,
+            "failureDetection": "1m30s",
+            "namespace": "prod",
+            "workload": "deploy/api",
+            "container": "api"
+          },
+          {
+            "percentile": 99,
+            "failureDetection": "1m30s",
+            "namespace": "prod",
+            "workload": "deploy/api",
+            "container": "api"
+          },
+          {
+            "percentile": 90,
+            "failureDetection": "1m30s",
+            "namespace": "prod",
+            "workload": "deploy/api",
+            "container": "api"
+          },
+          {
+            "percentile": 50,
+            "failureDetection": "30s",
+            "namespace": "prod",
+            "workload": "sts/cache",
+            "container": "cache"
+          },
+          {
+            "percentile": 10,
+            "failureDetection": "30s",
+            "namespace": "prod",
+            "workload": "deploy/web",
+            "container": "web"
+          },
+          {
+            "percentile": 0,
+            "failureDetection": "30s",
+            "namespace": "prod",
+            "workload": "deploy/web",
+            "container": "web"
+          }
+        ],
+        "buckets": [
+          {
+            "upTo": "10s",
+            "count": 0
+          },
+          {
+            "upTo": "30s",
+            "count": 4
+          },
+          {
+            "upTo": "1m0s",
+            "count": 1
+          },
+          {
+            "upTo": "2m0s",
+            "count": 1
+          },
+          {
+            "upTo": "5m0s",
+            "count": 0
+          },
+          {
+            "count": 0
+          }
+        ]
+      },
+      "liveness": {
+        "containers": 4,
+        "percentiles": [
+          {
+            "percentile": 100,
+            "failureDetection": "1m30s",
+            "namespace": "prod",
+            "workload": "cj/nightly",
+            "container": "report"
+          },
+          {
+            "percentile": 99,
+            "failureDetection": "1m30s",
+            "namespace": "prod",
+            "workload": "cj/nightly",
+            "container": "report"
+          },
+          {
+            "percentile": 90,
+            "failureDetection": "1m30s",
+            "namespace": "prod",
+            "workload": "cj/nightly",
+            "container": "report"
+          },
+          {
+            "percentile": 50,
+            "failureDetection": "30s",
+            "namespace": "prod",
+            "workload": "deploy/api",
+            "container": "api"
+          },
+          {
+            "percentile": 10,
+            "failureDetection": "10s",
+            "namespace": "prod",
+            "workload": "sts/db",
+            "container": "db"
+          },
+          {
+            "percentile": 0,
+            "failureDetection": "10s",
+            "namespace": "prod",
+            "workload": "sts/db",
+            "container": "db"
+          }
+        ],
+        "buckets": [
+          {
+            "upTo": "10s",
+            "count": 1
+          },
+          {
+            "upTo": "30s",
+            "count": 1
+          },
+          {
+            "upTo": "1m0s",
+            "count": 1
+          },
+          {
+            "upTo": "2m0s",
+            "count": 1
+          },
+          {
+            "upTo": "5m0s",
+            "count": 0
+          },
+          {
+            "count": 0
+          }
+        ]
+      }
+    }
+  }
+}

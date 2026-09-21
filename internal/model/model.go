@@ -21,6 +21,9 @@ type Report struct {
 	// observed any of the facts in it.
 	GeneratedAt time.Time  `json:"generatedAt"`
 	Workloads   []Workload `json:"workloads,omitempty"`
+	// Summary is present on an Overview that asked for one, and never on an
+	// Inspection, which is about a single workload.
+	Summary *Summary `json:"summary,omitempty"`
 }
 
 // New returns an empty Report stamped with the schema identifiers.

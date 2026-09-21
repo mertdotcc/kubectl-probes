@@ -15,6 +15,7 @@ kubectl probes                      # every workload in the current namespace
 kubectl probes -A -o wide           # every namespace, with handlers and drift
 kubectl probes deploy/api           # one workload, in full detail
 kubectl probes -f deploy.yaml       # a manifest that has not been applied yet
+kubectl probes -A --summary=only    # coverage and failure detection, cluster-wide
 
 # Containers with no readiness probe, anywhere
 kubectl probes -A -o json | jq -r '.workloads[] | .displayName as $w
@@ -40,6 +41,39 @@ rollout.argoproj.io/checkout  checkout     -           grpc:30s     -           
 sts/cache                     cache        -           tcp:30s      -           0/0    0         0         0
 sts/db                        db           -           exec:30s     tcp:10s     1/2    7         13        4
 * running config differs from workload template
+```
+
+The table is followed by a Summary: how many containers have each probe, and how long a
+failing container goes unnoticed, with the container at each percentile named so an
+outlier is one command away. `--summary=only` prints it alone:
+
+```console
+$ kubectl probes --summary=only
+Summary: 9 containers in 8 workloads
+
+Coverage
+  readiness   6 / 7   86%   (2 Job and CronJob containers not counted)
+  liveness    4 / 9   44%
+  startup     2 / 9   22%
+  none        2 / 9   22%
+
+Readiness failure detection (6 containers)
+  P100 (max)  1m30s  deploy/api  api
+  P99         1m30s  deploy/api  api
+  P90         1m30s  deploy/api  api
+  P50         30s    sts/cache   cache
+  P10         30s    deploy/web  web
+  P0 (min)    30s    deploy/web  web
+
+    ≤10s                          0
+  10–30s    ████████████████████  4
+  30s–1m    █████                 1
+    1–2m    █████                 1
+    2–5m                          0
+     >5m                          0
+
+Liveness failure detection (4 containers)
+  …
 ```
 
 Naming one workload switches to the detailed view. `sts/db` is the row above with seven
@@ -123,6 +157,9 @@ when you want failure evidence to look at.
 - `-f`, `--filename` — read workloads from manifests instead of the cluster. Repeatable.
 - `-o`, `--output` — `table` (default), `wide`, `json`, or `yaml`.
 - `--sort` — `name` (default) or `severity`, which puts the rows worth looking at first.
+- `--summary` — `show` (default) prints the Summary after the table, `only` prints it
+  alone, and `hide` leaves it out. It means the same in `-o json` and `-o yaml`. Naming a
+  single workload never prints one.
 - `--no-findings` — facts only, in every output format.
 - `-c`, `--color` — `auto` (default), `always`, or `never`.
 - `-v` — client-go log verbosity, for when a read did not return what you expected.
