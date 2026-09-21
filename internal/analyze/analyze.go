@@ -7,6 +7,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/mertdotcc/kubectl-probes/internal/collect"
 	"github.com/mertdotcc/kubectl-probes/internal/model"
@@ -46,7 +47,7 @@ func workloadOf(workload collect.Workload, gaps collect.Gaps, opts Options) mode
 		TemplateAvailable:   workload.Template != nil,
 	}
 	for _, ref := range containersOf(live, workload.Template) {
-		out.Containers = append(out.Containers, containerOf(ref, live, workload.Template, gaps, opts))
+		out.Containers = append(out.Containers, containerOf(ref, live, workload.Template, isBatch(workload.GroupKind), gaps, opts))
 	}
 	out.InitContainers = plainInitContainers(specsOf(live, workload.Template))
 	return out
@@ -162,7 +163,7 @@ func isSidecar(container *corev1.Container) bool {
 // containerOf is everything the report says about one container of a workload:
 // how its probes are configured, what that means, whether the template says
 // something else, and what the pods running it report.
-func containerOf(ref containerRef, live []collect.Pod, template *corev1.PodSpec, gaps collect.Gaps, opts Options) model.Container {
+func containerOf(ref containerRef, live []collect.Pod, template *corev1.PodSpec, batch bool, gaps collect.Gaps, opts Options) model.Container {
 	out := model.Container{Name: ref.name, Sidecar: ref.sidecar}
 
 	fromTemplate := specContainer(template, ref.name)
@@ -186,9 +187,17 @@ func containerOf(ref containerRef, live []collect.Pod, template *corev1.PodSpec,
 	// them, and they are kept in their own field so a reader can tell them
 	// from the facts they were drawn from.
 	if !opts.NoFindings {
-		out.Findings = findingsFor(ruleInputFor(configured, &out))
+		in := ruleInputFor(configured, &out)
+		in.batch = batch
+		out.Findings = findingsFor(in)
 	}
 	return out
+}
+
+// isBatch reports whether a workload's pods run to completion rather than
+// serve: a Job, or a CronJob, which is the Jobs one owner further up.
+func isBatch(gk schema.GroupKind) bool {
+	return gk.Group == "batch" && (gk.Kind == "Job" || gk.Kind == "CronJob")
 }
 
 // representative is the running container whose configuration the report shows.

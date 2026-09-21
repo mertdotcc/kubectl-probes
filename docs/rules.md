@@ -14,7 +14,7 @@ Where several of a container's probes qualify, the rule reports one finding per 
 
 ## `no-readiness-probe`
 
-**Fires when** the container has no readiness probe. Sidecars included: a sidecar that is not ready holds its whole pod out of service.
+**Fires when** the container has no readiness probe. Sidecars included: a sidecar that is not ready holds its whole pod out of service. Containers of a Job or CronJob are skipped, because their pods run to completion and nothing sends them traffic.
 
 > No readiness probe is configured, so the kubelet reports this container ready the moment it starts and traffic arrives from then on.
 
