@@ -46,3 +46,15 @@ Readiness failure detection (171 containers)
 - The Report gains an optional `summary`, which is additive, `omitempty`, and keeps `v1alpha1`.
 - `--summary` means the same in every output format. `show` is the Workloads and the Summary, `only` is the Summary without the Workloads, and `hide` is the Workloads without the Summary. `kubectl probes -A -o json --summary=only` is how a script reads a large cluster.
 - A Summary over a whole cluster is only as useful as `-A` is fast. The owner walk reads one owner at a time and events are listed one namespace at a time, which has not been measured on a large cluster. It is measured first, as an entry in the dogfood log, and made faster in a change of its own if it needs to be.
+
+## Amendment, 2026-09-21: what building it settled
+
+Building the Summary ([#52](https://github.com/mertdotcc/kubectl-probes/issues/52), [#53](https://github.com/mertdotcc/kubectl-probes/pull/53)) answered questions the example above left open. Where they differ, this section is right and the example is not.
+
+- **Job and CronJob containers are left out of readiness failure detection too**, not only out of readiness coverage, so the section's container count is the coverage line's count. A readiness figure for a container nothing sends traffic to would be counted against nothing.
+- **Durations are printed the way the Overview's cells print them**, `3m` rather than `3m0s`, so a figure in the Summary can be found in the table. JSON and YAML keep Go's form, as they do everywhere else.
+- **The namespace column appears only with `-A`**, as it does in the table. Without it every row would carry the namespace the user already named.
+- **Bars are rounded to the nearest cell**, as the example already does for its `>5m` bucket, so a bucket with a few containers can have a count and no bar. The count is exact; the bar is only how it compares.
+- **Ties are broken by the workload's display name**, `deploy/x` rather than `x`, which keeps `deploy/x` and `sts/x` apart and matches the Overview's own order.
+- **A probe only the template configures is not coverage.** The running pod has no such probe, and the table prints the cell as a drifted dash.
+- **The layout is the plugin's own**: two spaces between columns, as in every other table it prints, and no bold headings, as in the Inspection.
