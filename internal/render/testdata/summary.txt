@@ -1,0 +1,37 @@
+Summary: 214 containers in 61 workloads
+
+Coverage
+  readiness   171 / 202   85%   (12 Job and CronJob containers not counted)
+  liveness    133 / 214   62%
+  startup      29 / 214   14%
+  none         31 / 214   14%
+
+Readiness failure detection (171 containers)
+  P100 (max)  3m     sts/loki        loki
+  P99         2m30s  deploy/ledger   ledger
+  P90         1m30s  deploy/web      web
+  P50         30s    deploy/api      api
+  P10         10s    deploy/coredns  coredns
+  P0 (min)    3s     node/cp-1       etcd
+
+    ≤10s    ████                  18
+  10–30s    ████████████████████  97
+  30s–1m    ██████                31
+    1–2m    ████                  19
+    2–5m    █                      5
+     >5m                           1
+
+Liveness failure detection (133 containers)
+  P100 (max)  10m    sts/loki        loki
+  P99         5m     deploy/ledger   ledger
+  P90         1m30s  deploy/web      web
+  P50         30s    deploy/api      api
+  P10         30s    deploy/coredns  coredns
+  P0 (min)    10s    node/cp-1       etcd
+
+    ≤10s    ██████                20
+  10–30s    ████████████████████  70
+  30s–1m    █████████             30
+    1–2m    ██                     8
+    2–5m    █                      4
+     >5m                           1

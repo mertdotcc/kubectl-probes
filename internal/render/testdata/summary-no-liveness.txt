@@ -1,0 +1,22 @@
+Summary: 214 containers in 61 workloads
+
+Coverage
+  readiness   171 / 202   85%   (12 Job and CronJob containers not counted)
+  liveness      0 / 214    0%
+  startup      29 / 214   14%
+  none         31 / 214   14%
+
+Readiness failure detection (171 containers)
+  P100 (max)  3m     observability  sts/loki        loki
+  P99         2m30s  payments       deploy/ledger   ledger
+  P90         1m30s  shop           deploy/web      web
+  P50         30s    shop           deploy/api      api
+  P10         10s    kube-system    deploy/coredns  coredns
+  P0 (min)    3s     kube-system    node/cp-1       etcd
+
+    ≤10s    ████                  18
+  10–30s    ████████████████████  97
+  30s–1m    ██████                31
+    1–2m    ████                  19
+    2–5m    █                      5
+     >5m                           1

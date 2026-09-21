@@ -36,6 +36,10 @@ type Options struct {
 	Wide bool
 	// Sort defaults to SortName.
 	Sort SortOrder
+	// SummaryOnly leaves the table out and prints the Summary alone, and is
+	// --summary=only at the CLI. Whether there is a Summary at all is the
+	// Report's to say.
+	SummaryOnly bool
 }
 
 // The marks a cell can carry, and the sentences on stderr that explain them.
@@ -57,12 +61,35 @@ const (
 // The table goes to out and everything the table could not say goes to errOut,
 // so a pipe carries the table and nothing else. An empty report is not an
 // error: it says so on errOut and writes no table at all.
+//
+// A Report that carries a Summary gets it after the table, a blank line
+// apart, or on its own with opts.SummaryOnly.
 func Overview(out, errOut io.Writer, report *model.Report, opts Options) error {
 	rows := rowsOf(report)
 	if len(rows) == 0 {
 		_, err := fmt.Fprintln(errOut, emptyNote)
 		return err
 	}
+	if opts.SummaryOnly {
+		if report.Summary == nil {
+			return nil
+		}
+		return summary(out, report.Summary, opts)
+	}
+	if err := overviewTable(out, errOut, rows, opts); err != nil {
+		return err
+	}
+	if report.Summary == nil {
+		return nil
+	}
+	if _, err := fmt.Fprintln(out); err != nil {
+		return err
+	}
+	return summary(out, report.Summary, opts)
+}
+
+// overviewTable is the table itself, and the notes explaining its marks.
+func overviewTable(out, errOut io.Writer, rows []row, opts Options) error {
 	sortRows(rows, opts.Sort)
 
 	t := &table{}
