@@ -19,8 +19,16 @@
 # tooling the image happens to ship.
 set -euo pipefail
 
-CLUSTER=probes-demo
-KUBECTL=(kubectl --context "kind-${CLUSTER}")
+# The Makefile passes the context for whichever TOOL runs the cluster. Run by
+# hand, the script assumes kind.
+CONTEXT=${CONTEXT:-kind-probes-demo}
+KUBECTL=(kubectl --context "${CONTEXT}")
+
+# make heal needs the same TOOL that make chaos was given.
+heal="make heal"
+if [[ "${TOOL:-kind}" != "kind" ]]; then
+  heal+=" TOOL=${TOOL}"
+fi
 
 patch_path() { # deployment namespace probe value
   "${KUBECTL[@]}" -n "$2" patch deployment "$1" --type=json \
@@ -62,7 +70,7 @@ if (( events < 2 )); then
   echo "==> gave up waiting; the probes are broken, evidence may still be landing" >&2
 fi
 
-cat <<'MSG'
+cat <<MSG
 
 Now look at it:
 
@@ -72,5 +80,5 @@ Now look at it:
 
 Put it back with:
 
-  make heal
+  ${heal}
 MSG
