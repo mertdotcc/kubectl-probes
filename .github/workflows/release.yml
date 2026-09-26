@@ -30,7 +30,11 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    # Opens the krew-index PR from .krew.yaml. The first release still needs a
-    # human to get the plugin accepted into krew-index; see the release ticket.
+    # Opens the krew-index PR from .krew.yaml, but only for a plugin krew-index
+    # already lists. A first submission has to come from a human, and krew's
+    # reviewers close one the bot opens, so this step stays off until the
+    # repository variable KREW_INDEX_LISTED is set to true, once the hand-made
+    # submission has been merged. See the release ticket.
     - name: Update krew-index
+      if: vars.KREW_INDEX_LISTED == 'true'
       uses: rajatjindal/krew-release-bot@v0.0.51

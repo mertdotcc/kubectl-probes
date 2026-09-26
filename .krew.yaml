@@ -13,14 +13,15 @@ spec:
 
     The default Overview is one row per container, with handler type, headline
     effective timing per probe, aggregated runtime state, and a finding count.
-    Naming a single workload switches to an Inspection: full probe
-    configuration, effective timing in sentences, drift between a running pod
-    and its pod template, per-pod runtime state, and failure evidence.
+    It ends with a Summary: how many containers have each probe, and how long
+    a failing container goes unnoticed across everything in scope. Naming a
+    single workload switches to an Inspection: full probe configuration as a
+    table, effective timing in sentences, drift between a running pod and its
+    pod template, per-pod runtime state, and failure evidence.
 
     Findings are opinionated observations, reported separately from facts so
     you can tell one from the other. They tell you where to look; they never
-    propose a fix. Pass --no-findings for facts only, or -o json/yaml for a
-    versioned report.
+    propose a fix.
 
     The plugin is read-only. It reads pods, their owners, and events, and it
     never exercises a probe.
