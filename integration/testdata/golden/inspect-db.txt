@@ -3,21 +3,10 @@ sts/db -n prod
 
 container db
   Configuration
+    PROBE      DELAY  PERIOD  TIMEOUT  SUCCESS  FAILURE  ACTS AFTER  HANDLER
     startup    -
-    readiness  exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1
-      initialDelaySeconds            0   (default)
-      periodSeconds                  10
-      timeoutSeconds                 1   (default)
-      successThreshold               1   (default)
-      failureThreshold               3
-      terminationGracePeriodSeconds  -   (the pod's own)
-    liveness   tcp :5432
-      initialDelaySeconds            0   (default)
-      periodSeconds                  5
-      timeoutSeconds                 1   (default)
-      successThreshold               1   (default)
-      failureThreshold               2
-      terminationGracePeriodSeconds  -   (the pod's own)
+    readiness  0s     10s     1s       1        3        30s         exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1
+    liveness   0s     5s      1s       1        2        10s         tcp :5432
   Effective timing
     Readiness acts after 3 consecutive failures, at worst 30s after the container stops responding.
     Liveness acts after 2 consecutive failures, at worst 10s after the container stops responding.

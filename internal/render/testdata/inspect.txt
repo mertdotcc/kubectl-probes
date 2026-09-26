@@ -3,36 +3,19 @@ deploy/api -n prod
 
 container api
   Configuration
-    startup    GET /healthz:8080
-      initialDelaySeconds            0                 (default)
-      periodSeconds                  10                (default)
-      timeoutSeconds                 1                 (default)
-      successThreshold               1                 (default)
-      failureThreshold               30
-      terminationGracePeriodSeconds  -                 (the pod's own)
-    readiness  GET /ready:8080
-      initialDelaySeconds            0                 (default)
-      periodSeconds                  5
-      timeoutSeconds                 1                 (default)
-      successThreshold               2
-      failureThreshold               3                 (default)
-      terminationGracePeriodSeconds  -                 (the pod's own)
-      httpHeaders                    X-Probe: kubelet
-    liveness   GET /healthz:8080
-      initialDelaySeconds            10
-      periodSeconds                  10
-      timeoutSeconds                 1                 (default)
-      successThreshold               1                 (default)
-      failureThreshold               3                 (default)
-      terminationGracePeriodSeconds  30
+    PROBE      DELAY  PERIOD  TIMEOUT  SUCCESS  FAILURE  GRACE  ACTS AFTER  HANDLER
+    startup    0s     10s     1s       1        30       -      5m          GET /healthz:8080
+    readiness  0s     5s      1s       2        3        -      15s         GET /ready:8080
+    liveness   10s    10s*    1s       1        3        30s*   30s         GET /healthz:8080
+    readiness sends X-Probe: kubelet
   Effective timing
     Startup gives the container 5m to come up before the kubelet restarts it.
     Readiness acts after 3 consecutive failures, at worst 15s after the container stops responding. Readiness begins after the startup probe succeeds. Traffic can first arrive 5s after the startup probe succeeds.
     Liveness acts after 3 consecutive failures, at worst 30s after the container stops responding. Liveness begins after the startup probe succeeds. Liveness waits 10s before its first check.
   Drift
-    PROBE     FIELD                          RUNNING  TEMPLATE
-    liveness  periodSeconds                  10       30
-    liveness  terminationGracePeriodSeconds  30       -
+    PROBE     FIELD   RUNNING  TEMPLATE
+    liveness  period  10s      30s
+    liveness  grace   30s      -
   Runtime state
     POD                  READY  STARTED  RESTARTS  LAST TERMINATION                       POD-READY        CONTAINERS-READY
     api-6c9f7d4b8-2xklm  true   true     0         -                                      True (120m ago)  True (120m ago)

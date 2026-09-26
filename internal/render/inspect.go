@@ -48,17 +48,32 @@ const (
 	noTemplateNote = "drift is unknown: the workload template could not be read"
 )
 
-// The note beside a probe field the spec never wrote.
+// headersSaid is the line under the Configuration table naming the headers a
+// probe sends.
+const headersSaid = "%s sends %s"
+
+// The names the Configuration table's columns and the Drift section's rows go
+// by. They are kubectl describe's own words for the probe's fields, short
+// enough that a column of two-character values is not headed by a word ten
+// times as wide.
 const (
-	defaultSaid = "(default)"
-	// A probe that does not set its own terminationGracePeriodSeconds is
-	// killed on the pod's, which is not this tool's to report.
-	podGraceSaid = "(the pod's own)"
+	fieldProbe   = "probe"
+	fieldDelay   = "delay"
+	fieldPeriod  = "period"
+	fieldTimeout = "timeout"
+	fieldSuccess = "success"
+	fieldFailure = "failure"
+	fieldGrace   = "grace"
+	fieldHandler = "handler"
+
+	// actsAfterColumn is the one column that is not a field of the probe
+	// but what its fields add up to.
+	actsAfterColumn = "ACTS AFTER"
 )
 
 // How far each part of the Inspection is indented. A section is under its
-// container, its body is under its heading, and a probe's fields are under the
-// probe.
+// container, its body is under its heading, and a failure message hangs under
+// the row that counted it.
 const (
 	sectionIndent = "  "
 	bodyIndent    = "    "
@@ -66,8 +81,8 @@ const (
 )
 
 // Inspection writes the detailed view of a single workload: full probe
-// configuration, what its timing means in sentences, drift against the
-// workload template, per-pod runtime state, failure evidence, and last the
+// configuration as a table, what its timing means in sentences, drift against
+// the workload template, per-pod runtime state, failure evidence, and last the
 // findings.
 //
 // It takes the whole Report rather than a Workload because the ages it prints
@@ -171,100 +186,197 @@ func inspectContainer(w io.Writer, container model.Container, now time.Time) err
 	return nil
 }
 
-// configurationSection is every raw field of every probe, with the values the
-// spec never wrote shown at the kubelet's default and marked as defaults: the
-// kubelet behaves the same either way, and a reader comparing two containers
-// needs to see which numbers somebody chose.
+// configurationSection is every probe's configuration as one table, a row per
+// probe and a column per setting, so the three probes of a container can be
+// compared down a column rather than across three lists (ADR 0010).
 //
-// The probe headings are raw lines, so the field rows of all three probes share
-// one set of columns and line up with each other however long a handler is.
+// A probe nobody configured keeps its row, so the three are always there to
+// compare, and the handler is the last column, so a long exec command runs to
+// the edge of the terminal without pushing a single number out of line.
 func configurationSection(w io.Writer, container model.Container, _ time.Time) error {
 	heading(w, headingConfiguration)
-
-	t := &table{}
-	configured := false
-	for _, probe := range model.ProbeTypes {
-		detail := container.Probe(probe)
-		if detail == nil || detail.Config == nil {
-			t.addRaw(probeHeading(probe, tinted(absent, gray).print()))
-			continue
-		}
-		configured = true
-		t.addRaw(probeHeading(probe, handlerLine(detail.Config.Handler)))
-		for _, field := range configFields(detail.Config) {
-			t.add(plain(detailIndent+field.name), field.value, field.note)
-		}
-	}
-	if !configured {
+	if !anyProbe(container) {
 		sayNothing(w, noProbesSaid)
 		return nil
+	}
+
+	grace := graceColumn(container)
+	t := &table{}
+	header := configHeader(grace)
+	t.add(header...)
+	for _, probe := range model.ProbeTypes {
+		row := configRow(probe, container.Probe(probe), grace)
+		// A row cut short ends every column it has no cell in, as far as
+		// tabwriter is concerned, so the rows after it would line up with
+		// each other and not with the header. Empty cells keep it in them,
+		// and cost nothing once the padding after the last one is trimmed.
+		for len(row) < len(header) {
+			row = append(row, plain(""))
+		}
+		t.add(row...)
+	}
+	// Headers are too long for a cell and too much to leave out, so they
+	// hang under the table as raw lines, which take no part in its widths.
+	for _, probe := range model.ProbeTypes {
+		if detail := container.Probe(probe); detail != nil && detail.Config != nil {
+			if headers := detail.Config.Handler.HTTPHeaders; len(headers) > 0 {
+				t.addRaw(bodyIndent + fmt.Sprintf(headersSaid, probe, headerList(headers)))
+			}
+		}
 	}
 	return t.write(w)
 }
 
-// probeHeading is a probe's name and how it asks, padded so the three headings
-// line up with each other.
-func probeHeading(probe model.ProbeType, handler string) string {
-	return fmt.Sprintf("%s%-*s  %s", bodyIndent, probeNameWidth, probe, handler)
-}
-
-var probeNameWidth = widestProbeName()
-
-func widestProbeName() int {
-	widest := 0
+// anyProbe says whether the table has anything to show. A probe only the
+// template configures counts: it is a row with nothing in it but the mark
+// that says the template has it, which is how a rollout adding a container's
+// first probe looks while the old pods are still running.
+func anyProbe(container model.Container) bool {
 	for _, probe := range model.ProbeTypes {
-		widest = max(widest, len(probe))
+		if detail := container.Probe(probe); detail != nil && (detail.Config != nil || detail.Drifted) {
+			return true
+		}
 	}
-	return widest
+	return false
 }
 
-// configField is one row of the Configuration section: the field as the spec
-// spells it, the value the kubelet uses, and where that value came from.
-type configField struct {
-	name  string
-	value cell
-	note  cell
+// timingField is one of the five numeric fields every probe has: what the
+// table calls it, where a Probe keeps it, and what the kubelet uses in its
+// place when the spec leaves it out.
+type timingField struct {
+	name     string
+	of       func(*model.Probe) *int32
+	fallback int32
+	// seconds marks a duration, printed the way the Overview prints one.
+	// The two thresholds are counts, and printed bare.
+	seconds bool
 }
 
-func configFields(probe *model.Probe) []configField {
-	fields := []configField{
-		intField("initialDelaySeconds", probe.InitialDelaySeconds, model.DefaultInitialDelaySeconds),
-		intField("periodSeconds", probe.PeriodSeconds, model.DefaultPeriodSeconds),
-		intField("timeoutSeconds", probe.TimeoutSeconds, model.DefaultTimeoutSeconds),
-		intField("successThreshold", probe.SuccessThreshold, model.DefaultSuccessThreshold),
-		intField("failureThreshold", probe.FailureThreshold, model.DefaultFailureThreshold),
+var timingFields = []timingField{
+	{name: fieldDelay, of: func(p *model.Probe) *int32 { return p.InitialDelaySeconds }, fallback: model.DefaultInitialDelaySeconds, seconds: true},
+	{name: fieldPeriod, of: func(p *model.Probe) *int32 { return p.PeriodSeconds }, fallback: model.DefaultPeriodSeconds, seconds: true},
+	{name: fieldTimeout, of: func(p *model.Probe) *int32 { return p.TimeoutSeconds }, fallback: model.DefaultTimeoutSeconds, seconds: true},
+	{name: fieldSuccess, of: func(p *model.Probe) *int32 { return p.SuccessThreshold }, fallback: model.DefaultSuccessThreshold},
+	{name: fieldFailure, of: func(p *model.Probe) *int32 { return p.FailureThreshold }, fallback: model.DefaultFailureThreshold},
+}
+
+// value is the field as the kubelet uses it, and whether that is the kubelet's
+// default rather than a value the spec wrote.
+func (f timingField) value(probe *model.Probe) (string, bool) {
+	value, isDefault := model.Effective(f.of(probe), f.fallback)
+	if f.seconds {
+		return short(model.Seconds(value)), isDefault
+	}
+	return strconv.FormatInt(int64(value), 10), isDefault
+}
+
+// graceColumn says whether the table has a GRACE column, which is only where
+// one of the container's probes sets its own terminationGracePeriodSeconds.
+// Few do, and a probe that does not is killed on the pod's grace period, which
+// is not this tool's to report, so a column of dashes would say nothing.
+//
+// A grace period only the template sets is a column too, so that the drift
+// mark it earns has a cell to go on.
+func graceColumn(container model.Container) bool {
+	for _, probe := range model.ProbeTypes {
+		detail := container.Probe(probe)
+		if detail == nil {
+			continue
+		}
+		if detail.Config != nil && detail.Config.TerminationGracePeriodSeconds != nil {
+			return true
+		}
+		if driftedFields(detail)[fieldGrace] {
+			return true
+		}
+	}
+	return false
+}
+
+func configHeader(grace bool) []cell {
+	cells := []cell{plain(bodyIndent + strings.ToUpper(fieldProbe))}
+	for _, field := range timingFields {
+		cells = append(cells, plain(strings.ToUpper(field.name)))
+	}
+	if grace {
+		cells = append(cells, plain(strings.ToUpper(fieldGrace)))
+	}
+	return append(cells, plain(actsAfterColumn), plain(strings.ToUpper(fieldHandler)))
+}
+
+// configRow is one probe's row: its fields as the running pod has them, per
+// ADR 0001, what they add up to, and how it asks. A probe the pod does not
+// configure is its name and a dash.
+//
+// Every cell the template disagrees about wears the Overview's drift mark. A
+// probe on one side only, or a difference no column explains, marks the
+// probe's own name.
+func configRow(probe model.ProbeType, detail *model.ProbeDetail, grace bool) []cell {
+	drifted := driftedFields(detail)
+	name := marked(plain(bodyIndent+string(probe)), drifted[fieldProbe])
+	if detail == nil || detail.Config == nil {
+		return []cell{name, tinted(absent, gray)}
 	}
 
-	grace := configField{
-		name:  "terminationGracePeriodSeconds",
-		value: tinted(absent, gray),
-		note:  tinted(podGraceSaid, gray),
+	config := detail.Config
+	cells := []cell{name}
+	for _, field := range timingFields {
+		cells = append(cells, marked(fieldCell(field, config), drifted[field.name]))
 	}
-	if probe.TerminationGracePeriodSeconds != nil {
-		grace.value = plain(strconv.FormatInt(*probe.TerminationGracePeriodSeconds, 10))
-		grace.note = plain("")
+	if grace {
+		cells = append(cells, marked(graceCell(config.TerminationGracePeriodSeconds), drifted[fieldGrace]))
 	}
-	fields = append(fields, grace)
+	return append(cells,
+		actsAfterCell(probe, detail.Timing),
+		marked(plain(handlerLine(config.Handler)), drifted[fieldHandler]),
+	)
+}
 
-	// The handler is already on the probe's own heading, all but its headers,
-	// which are too long to belong there and too much to leave out.
-	if headers := probe.Handler.HTTPHeaders; len(headers) > 0 {
-		fields = append(fields, configField{name: "httpHeaders", value: plain(headerList(headers)), note: plain("")})
+// driftedFields is the set of names driftRows gives a probe's drift, so the
+// table marks exactly what the Drift section lists and the two cannot
+// disagree.
+func driftedFields(detail *model.ProbeDetail) map[string]bool {
+	if detail == nil || !detail.Drifted {
+		return nil
+	}
+	fields := map[string]bool{}
+	for _, row := range driftRows(detail) {
+		fields[row.name] = true
 	}
 	return fields
 }
 
-func intField(name string, written *int32, fallback int32) configField {
-	value, isDefault := model.Effective(written, fallback)
-	field := configField{
-		name:  name,
-		value: plain(strconv.FormatInt(int64(value), 10)),
-		note:  plain(""),
+// marked is a cell with the red drift mark after it where it drifted, each
+// part keeping its own colour, so a default the template disagrees about is
+// still gray.
+func marked(c cell, drifted bool) cell {
+	if !drifted {
+		return c
 	}
+	return join(c, tinted(driftMark, red))
+}
+
+// fieldCell is one field's value, in gray where the spec never wrote it: the
+// kubelet behaves the same either way, and a reader comparing two containers
+// needs to see which numbers somebody chose. Gray costs the column no width,
+// which a text marker beside every default would not (ADR 0010).
+func fieldCell(field timingField, probe *model.Probe) cell {
+	text, isDefault := field.value(probe)
 	if isDefault {
-		field.note = tinted(defaultSaid, gray)
+		return tinted(text, gray)
 	}
-	return field
+	return plain(text)
+}
+
+// actsAfterCell is the Overview's headline for the probe: how long a startup
+// probe gives the container to come up, and how long the other two take to act
+// on a failure. Where the count starts is the Effective timing sentences' to
+// say.
+func actsAfterCell(probe model.ProbeType, timing *model.Timing) cell {
+	if text := headline(probe, timing); text != "" {
+		return plain(text)
+	}
+	return tinted(absent, gray)
 }
 
 // effectiveTimingSection is what the numbers above mean, in sentences. The
@@ -318,51 +430,42 @@ func driftSection(w io.Writer, container model.Container, _ time.Time) error {
 	return t.write(w)
 }
 
-// driftRow is one field the two sides disagree about.
+// driftRow is one field the two sides disagree about, named the way the
+// Configuration table heads its column and valued the way that column prints
+// it, so a row here reads as a cell above.
 type driftRow struct {
 	name     string
 	running  cell
 	template cell
 }
 
+// driftRows is the one comparison of a drifted probe's two sides. The Drift
+// section prints its rows, and the Configuration table marks the cells they
+// name, which is what keeps the two from ever disagreeing.
 func driftRows(detail *model.ProbeDetail) []driftRow {
 	// A probe configured on one side only is drift about the probe itself,
 	// and comparing fields it does not have would say the same thing six
 	// times over.
 	switch {
 	case detail.Config == nil:
-		return []driftRow{{name: "probe", running: tinted(absent, gray), template: plain(handlerLine(detail.Template.Handler))}}
+		return []driftRow{{name: fieldProbe, running: tinted(absent, gray), template: plain(handlerLine(detail.Template.Handler))}}
 	case detail.Template == nil:
-		return []driftRow{{name: "probe", running: plain(handlerLine(detail.Config.Handler)), template: tinted(absent, gray)}}
+		return []driftRow{{name: fieldProbe, running: plain(handlerLine(detail.Config.Handler)), template: tinted(absent, gray)}}
 	}
 
 	running, template := detail.Config, detail.Template
 	rows := differing(driftRow{
-		name:     "handler",
+		name:     fieldHandler,
 		running:  plain(handlerLine(running.Handler)),
 		template: plain(handlerLine(template.Handler)),
 	})
-	for _, field := range []struct {
-		name              string
-		running, template *int32
-		fallback          int32
-	}{
-		{"initialDelaySeconds", running.InitialDelaySeconds, template.InitialDelaySeconds, model.DefaultInitialDelaySeconds},
-		{"periodSeconds", running.PeriodSeconds, template.PeriodSeconds, model.DefaultPeriodSeconds},
-		{"timeoutSeconds", running.TimeoutSeconds, template.TimeoutSeconds, model.DefaultTimeoutSeconds},
-		{"successThreshold", running.SuccessThreshold, template.SuccessThreshold, model.DefaultSuccessThreshold},
-		{"failureThreshold", running.FailureThreshold, template.FailureThreshold, model.DefaultFailureThreshold},
-	} {
-		left, _ := model.Effective(field.running, field.fallback)
-		right, _ := model.Effective(field.template, field.fallback)
-		rows = append(rows, differing(driftRow{
-			name:     field.name,
-			running:  plain(strconv.FormatInt(int64(left), 10)),
-			template: plain(strconv.FormatInt(int64(right), 10)),
-		})...)
+	for _, field := range timingFields {
+		left, _ := field.value(running)
+		right, _ := field.value(template)
+		rows = append(rows, differing(driftRow{name: field.name, running: plain(left), template: plain(right)})...)
 	}
 	rows = append(rows, differing(driftRow{
-		name:     "terminationGracePeriodSeconds",
+		name:     fieldGrace,
 		running:  graceCell(running.TerminationGracePeriodSeconds),
 		template: graceCell(template.TerminationGracePeriodSeconds),
 	})...)
@@ -372,7 +475,7 @@ func driftRows(detail *model.ProbeDetail) []driftRow {
 		// list does not cover is still a difference. Saying the probe drifted
 		// without saying where is better than printing an empty section.
 		return []driftRow{{
-			name:     "probe",
+			name:     fieldProbe,
 			running:  plain(handlerLine(running.Handler)),
 			template: plain(handlerLine(template.Handler)),
 		}}
@@ -390,11 +493,13 @@ func differing(row driftRow) []driftRow {
 	return []driftRow{row}
 }
 
+// graceCell is a probe's own grace period, or a gray dash for a probe that
+// leaves it to the pod.
 func graceCell(seconds *int64) cell {
 	if seconds == nil {
 		return tinted(absent, gray)
 	}
-	return plain(strconv.FormatInt(*seconds, 10))
+	return plain(short(model.Seconds(*seconds)))
 }
 
 // runtimeStateSection is what the kubelet reports about the container in each
