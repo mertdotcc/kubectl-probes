@@ -3,15 +3,10 @@ no pods
 
 container canary
   Configuration
+    PROBE      DELAY  PERIOD  TIMEOUT  SUCCESS  FAILURE  ACTS AFTER  HANDLER
     startup    -
     readiness  -
-    liveness   tcp :8080
-      initialDelaySeconds            0   (default)
-      periodSeconds                  10  (default)
-      timeoutSeconds                 1   (default)
-      successThreshold               1   (default)
-      failureThreshold               3   (default)
-      terminationGracePeriodSeconds  -   (the pod's own)
+    liveness   0s     10s     1s       1        3        30s         tcp :8080
   Effective timing
     Liveness acts after 3 consecutive failures, at worst 30s after the container stops responding.
   Runtime state

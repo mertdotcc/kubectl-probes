@@ -3,14 +3,9 @@ rollout.argoproj.io/web -n prod
 
 container web
   Configuration
+    PROBE      DELAY  PERIOD  TIMEOUT  SUCCESS  FAILURE  ACTS AFTER  HANDLER
     startup    -
-    readiness  grpc :7070
-      initialDelaySeconds            0   (default)
-      periodSeconds                  10  (default)
-      timeoutSeconds                 1   (default)
-      successThreshold               1   (default)
-      failureThreshold               3   (default)
-      terminationGracePeriodSeconds  -   (the pod's own)
+    readiness  0s     10s     1s       1        3        30s         grpc :7070
     liveness   -
   Effective timing
     Readiness acts after 3 consecutive failures, at worst 30s after the container stops responding.
