@@ -39,6 +39,11 @@ archives:
 checksum:
   name_template: checksums.txt
 
+# A tag with a pre-release suffix, such as v0.2.0-rc.1, is published as a
+# GitHub pre-release, and a plain one as a release.
+release:
+  prerelease: auto
+
 snapshot:
   version_template: "{{ .Tag }}-next"
 
