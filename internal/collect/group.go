@@ -69,6 +69,12 @@ func group(items []owned, events map[types.UID][]corev1.Event) []Workload {
 		workload, seen := workloads[key]
 		if !seen {
 			workload = newWorkload(key, item.owner)
+			if item.owner == nil {
+				// A bare pod is its own template, the same reading PodTemplate
+				// takes of a pod in a manifest, so it has no drift to report
+				// rather than drift unknown.
+				workload.Template = item.pod.Spec.DeepCopy()
+			}
 			workloads[key] = workload
 			order = append(order, key)
 		}

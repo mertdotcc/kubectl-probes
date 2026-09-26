@@ -376,6 +376,7 @@
       "namespace": "prod",
       "displayName": "pod/debug",
       "podCount": 1,
+      "templateAvailable": true,
       "containers": [
         {
           "name": "debug",

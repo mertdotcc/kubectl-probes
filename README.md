@@ -90,15 +90,15 @@ container db
     readiness  exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1
       initialDelaySeconds            0   (default)
       periodSeconds                  10
-      timeoutSeconds                 1   (default)
-      successThreshold               1   (default)
+      timeoutSeconds                 1
+      successThreshold               1
       failureThreshold               3
       terminationGracePeriodSeconds  -   (the pod's own)
     liveness   tcp :5432
       initialDelaySeconds            0   (default)
       periodSeconds                  5
-      timeoutSeconds                 1   (default)
-      successThreshold               1   (default)
+      timeoutSeconds                 1
+      successThreshold               1
       failureThreshold               2
       terminationGracePeriodSeconds  -   (the pod's own)
   Effective timing

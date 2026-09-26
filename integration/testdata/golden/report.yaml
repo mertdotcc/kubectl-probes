@@ -398,6 +398,7 @@ workloads:
   name: debug
   namespace: prod
   podCount: 1
+  templateAvailable: true
 - containers:
   - name: import
     pods:
