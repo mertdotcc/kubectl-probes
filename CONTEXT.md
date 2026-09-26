@@ -36,7 +36,7 @@ How many of the Containers in scope have a startup, readiness, or liveness probe
 _Avoid_: Adoption, compliance
 
 **Inspection**:
-The detailed output for a single Workload: full probe configuration, effective timing in sentences, drift, per-pod runtime state, failure evidence, then findings.
+The detailed output for a single Workload: full probe configuration as a table, effective timing in sentences, drift, per-pod runtime state, failure evidence, then findings.
 _Avoid_: Describe, detail view, drilldown
 
 **Report**:
