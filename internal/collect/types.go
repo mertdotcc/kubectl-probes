@@ -25,9 +25,9 @@ type Workload struct {
 	// Owner is the top-most owner object. It is nil for a bare pod, which
 	// owns itself, and for an owner the user may not read.
 	Owner *unstructured.Unstructured
-	// Template is the pod template carried by Owner. It is nil when the kind
-	// has none, when the owner could not be read, or when a custom kind keeps
-	// its template somewhere this tool does not look.
+	// Template is the pod template carried by Owner, or a bare pod's own spec.
+	// It is nil when the kind has none, when the owner could not be read, or
+	// when a custom kind keeps its template somewhere this tool does not look.
 	Template *corev1.PodSpec
 	Pods     []Pod
 }

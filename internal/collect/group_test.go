@@ -64,8 +64,11 @@ spec:
 	if api.Template == nil || len(api.Template.Containers) != 1 {
 		t.Error("the workload did not pick up its owner's template")
 	}
-	if shell.Template != nil {
-		t.Error("a bare pod has no template to compare against")
+	// A bare pod is its own template, the same reading PodTemplate takes of a
+	// pod in a manifest. Without one it would report drift as unknown when
+	// there is nothing it could drift from.
+	if shell.Template == nil {
+		t.Error("the bare pod did not take its own spec as its template")
 	}
 
 	var withEvents int
