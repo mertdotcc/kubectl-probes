@@ -86,21 +86,10 @@ sts/db -n prod
 
 container db
   Configuration
+    PROBE      DELAY  PERIOD  TIMEOUT  SUCCESS  FAILURE  ACTS AFTER  HANDLER
     startup    -
-    readiness  exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1
-      initialDelaySeconds            0   (default)
-      periodSeconds                  10
-      timeoutSeconds                 1
-      successThreshold               1
-      failureThreshold               3
-      terminationGracePeriodSeconds  -   (the pod's own)
-    liveness   tcp :5432
-      initialDelaySeconds            0   (default)
-      periodSeconds                  5
-      timeoutSeconds                 1
-      successThreshold               1
-      failureThreshold               2
-      terminationGracePeriodSeconds  -   (the pod's own)
+    readiness  0s     10s     1s       1        3        30s         exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1
+    liveness   0s     5s      1s       1        2        10s         tcp :5432
   Effective timing
     Readiness acts after 3 consecutive failures, at worst 30s after the container stops responding.
     Liveness acts after 2 consecutive failures, at worst 10s after the container stops responding.
@@ -180,7 +169,7 @@ computed from the *effective* configuration: the spec with the kubelet's default
   from the startup probe succeeding where there is one, since neither runs before then.
 - **`*`** marks drift: the running pod's spec differs from its workload's pod template.
   Normal mid-rollout, worth a look afterwards. `-o wide` names the drifted probes, and the
-  detailed view prints the fields side by side.
+  detailed view puts the `*` on each field that drifted and prints both sides of it.
 - **`-`** in a probe column means no probe is configured. In `FAILURES` it means the count
   is unknown because listing events was forbidden, which is not the same as zero.
 - **`READY`** is ready pods over total pods. `0/0` is a workload with no pods, read from
