@@ -1,38 +1,47 @@
 # The demo cluster
 
-A three-node [kind](https://kind.sigs.k8s.io/) cluster with a small but real
-system running on it, for trying `kubectl probes` against a live API server.
+A three-node cluster with a small but real system running on it, for trying
+`kubectl probes` against a live API server.
 
-**kind is the supported local environment for this project.** Output shown in
-the repository README and in write-ups comes from this cluster, so anyone
-following along sees what you see. Why kind and not minikube or k3d, and why
-there is no Helm here, is in
+**It runs on [kind](https://kind.sigs.k8s.io/) or
+[minikube](https://minikube.sigs.k8s.io/), and both are supported.** kind is the
+default. Add `TOOL=minikube` to any `make` target to use minikube instead. Both
+give you the same three nodes, the same Kubernetes version and the same
+workloads, and both are tested end to end: `up`, `probes`, `chaos`, `heal`,
+`stop`, `start`, `down`. Why these two and not k3d, and why there is no Helm
+here, is in
 [ADR 0004](../../docs/adr/0004-the-supported-local-environment-is-a-kind-cluster-in-the-repo.md).
 
 ## What you need
 
-`kubectl`, `kind`, and a container runtime. Nothing else — no Helm, no
-operators, no CRDs.
+`kubectl`, `kind` or `minikube`, and a container runtime. Nothing else: no
+Helm, no operators, no CRDs.
 
 On macOS, with [colima](https://github.com/abiosoft/colima) rather than Docker
 Desktop:
 
 ```sh
-brew install colima kind kubectl
+brew install colima kubectl kind      # or: brew install colima kubectl minikube
 colima start --cpu 4 --memory 12 --disk 60
 ```
 
-12 GB is comfortable rather than necessary; the cluster itself wants roughly
-5–6 GB with everything running.
+12 GB is comfortable rather than necessary: the cluster itself wants roughly
+5–6 GB with everything running. minikube caps each node at 3 GB, which 12 GB
+covers.
 
 ## Start it
 
 ```sh
 cd hack/demo-cluster
-make up
+make up                  # kind
+make up TOOL=minikube    # minikube
 ```
 
-First run is mostly image pulls. Afterwards:
+Every target below takes the same `TOOL`. To stop typing it, run
+`export TOOL=minikube` once in your shell.
+
+The first run is mostly image pulls, and a later `make up` takes about two
+minutes on either tool. Afterwards:
 
 ```sh
 make probes        # build the plugin from this repo and run it against the cluster
@@ -45,16 +54,16 @@ neither:
 
 ```sh
 make stop          # suspend, keeping the cluster's state
-make start         # back in about 30 seconds
+make start         # back where you left it
 ```
 
 The manifests are the source of truth, so `make down && make up` gets you the
 same cluster again. Nothing is snapshotted.
 
 One thing does not survive a suspend: **failure evidence**. The API server
-garbage-collects events on `--event-ttl`, which `kind.yaml` raises to 24h but
-cannot extend forever. Restart counts persist; `Unhealthy` events do not.
-Generate evidence when you need it instead:
+garbage-collects events on `--event-ttl`, which `kind.yaml` and the Makefile's
+minikube flags both raise to 24h but cannot extend forever. Restart counts
+persist; `Unhealthy` events do not. Generate evidence when you need it instead:
 
 ```sh
 make chaos         # break some probes on purpose
@@ -63,7 +72,11 @@ make heal          # put them back
 
 ## What is in it
 
-Nine authored workloads, plus the nine or so kind brings with it, so `kubectl probes -A` has something to say.
+Nine authored workloads, plus the system workloads the cluster brings with it,
+so `kubectl probes -A` has something to say. Both tools bring coredns,
+kube-proxy, kindnet and the control plane's static pods, which the plugin shows
+as `node/<control-plane>`. kind adds local-path-provisioner, and minikube adds a
+bare `storage-provisioner` pod.
 
 Probe configuration is deliberate. Each workload either demonstrates a rule or
 demonstrates probes done well, and the configurations are meant to look like
@@ -112,9 +125,33 @@ people miss.
 of `cluster`, `apply`, `ready`. Run whichever one you need rather
 than tearing down.
 
-**A platform or manifest error on the node image.** The image is pinned by
-digest. Drop to the plain tag in `kind.yaml` if your setup cannot resolve it:
-`image: kindest/node:v1.37.0`.
+**`too many open files` on colima.** On minikube it shows up as `make up`
+failing with `validate CRI v1 runtime API ... unknown service
+runtime.v1.RuntimeService`. Underneath, containerd could not start because the
+colima VM ran out of inotify instances. kind documents the same limit among its
+[known issues](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files).
+Raise it, then `make down` and `make up` again:
+
+```sh
+colima ssh -- sudo sysctl -w fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576
+```
+
+That lasts until colima restarts. To make it stick, add it to
+`~/.colima/default/colima.yaml`:
+
+```yaml
+provision:
+  - mode: system
+    script: sysctl -w fs.inotify.max_user_instances=8192 fs.inotify.max_user_watches=1048576
+```
+
+**A platform or manifest error on the node image (kind).** The image is pinned
+by digest. Drop to the plain tag in `kind.yaml` if your setup cannot resolve
+it: `image: kindest/node:v1.37.0`.
+
+**`make stop` or `make heal` does nothing useful on minikube.** Every target
+needs the `TOOL=minikube` that `make up` got. Without it they act on the kind
+cluster.
 
 ## Versions
 
@@ -129,12 +166,15 @@ stops matching what a reader gets tomorrow.
 | Prometheus | `prom/prometheus:v2.54.1` |
 | Grafana | `grafana/grafana:11.2.0` |
 | node-exporter | `prom/node-exporter:v1.8.2` |
-| Kubernetes | `kindest/node:v1.37.0`, pinned by digest in `kind.yaml` |
+| Kubernetes | v1.37.0: `kindest/node:v1.37.0`, pinned by digest in `kind.yaml`, and `--kubernetes-version=v1.37.0` in the Makefile for minikube |
 | kind | v0.33.0 (the version whose default node image is pinned above) |
+| minikube | v1.39.0, tested |
 
-The node image is pinned by digest, so the Kubernetes version does not drift
-with whichever kind you happen to have installed. To move it, read the tag off
-`make up` and replace the `image:` on all three nodes in `kind.yaml`.
+The kind node image is pinned by digest, so the Kubernetes version does not
+drift with whichever kind you happen to have installed. To move it, read the
+tag off `make up` and replace the `image:` on all three nodes in `kind.yaml`.
+Move `--kubernetes-version` in the Makefile to match, so both tools stay on the
+same release.
 
 ## Notes
 

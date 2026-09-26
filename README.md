@@ -135,19 +135,20 @@ upgrade it.
 
 ## Trying it on a real cluster
 
-This project's supported local environment is [kind](https://kind.sigs.k8s.io/), and
-[`hack/demo-cluster/`](hack/demo-cluster/) ships one: three nodes, a small system running
-on them, and probe configuration chosen so every rule has something to fire on.
+[`hack/demo-cluster/`](hack/demo-cluster/) ships a local cluster to try it on: three
+nodes, a small system running on them, and probe configuration chosen so every rule has
+something to fire on. It runs on [kind](https://kind.sigs.k8s.io/) or
+[minikube](https://minikube.sigs.k8s.io/), and both are supported.
 
 ```sh
 cd hack/demo-cluster
-make up
+make up                  # or: make up TOOL=minikube
 make probes
 ```
 
-`kubectl` and `kind` are the only tools it needs. The output in this README comes from
-that cluster, so what you see is what it prints. `make chaos` breaks probes on purpose
-when you want failure evidence to look at.
+`kubectl` and `kind` or `minikube` are the only tools it needs. `make chaos` breaks
+probes on purpose when you want failure evidence to look at. The plugin itself is not
+tied to either: it reads whatever cluster your kubeconfig points at.
 
 ## Flags
 

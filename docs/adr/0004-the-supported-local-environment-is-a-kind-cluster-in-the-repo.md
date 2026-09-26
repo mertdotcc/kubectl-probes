@@ -22,3 +22,9 @@ Trying the plugin against something real requires a cluster, and a cluster assem
   **Withdrawn on 2026-09-21, with the Dashboard ([ADR 0008](0008-there-is-no-dashboard.md)):** the cluster exists to be read by `kubectl probes`, not browsed. The landing page, ingress-nginx, the Ingresses and `make hosts` are gone, and the authored set is back to nine.
 - Failure evidence is generated, not preserved, and `make chaos` breaks two probes in deliberately different ways: a liveness failure that restarts on a loop, and a readiness failure that stalls a rolling update while the old pods keep serving. The second is what exercises drift, and it is the only path in which the plugin's `*` template-mismatch marker appears.
 - `hack/` is outside what goreleaser builds, so none of this ships in a release archive or affects the krew manifest.
+
+## Amendment, 2026-09-26: minikube is supported too
+
+The demo cluster also runs on minikube: `TOOL=minikube` on any `make` target. kind stays the default. People try a plugin on the local cluster they already have, and minikube is at least as common as kind; v0.1.0 was tested on minikube before release. The manifests do not change, only the cluster's lifecycle, so the Makefile holds both: three nodes, Kubernetes v1.37.0 and a 24h `--event-ttl` on either, pinned by the node image's digest in `kind.yaml` and by `--kubernetes-version` for minikube. The whole flow, `up` through `chaos`, `heal`, `stop`, `start` and `down`, was run from scratch on both.
+
+The worry under Considered Options, that a distribution differs on the surface this plugin reads, did not hold for minikube: it runs kubeadm-built upstream Kubernetes, and owner references, events and static pods read the same as on kind. k3d stays unsupported. The Makefile's `TOOL` accepts `kind` or `minikube` and fails on anything else, so adding a third tool is a decision, not a flag.

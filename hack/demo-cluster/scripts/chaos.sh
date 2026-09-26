@@ -19,8 +19,16 @@
 # tooling the image happens to ship.
 set -euo pipefail
 
-CLUSTER=probes-demo
-KUBECTL=(kubectl --context "kind-${CLUSTER}")
+# The Makefile passes the context for whichever TOOL runs the cluster. Run by
+# hand, the script assumes kind.
+CONTEXT=${CONTEXT:-kind-probes-demo}
+KUBECTL=(kubectl --context "${CONTEXT}")
+
+# make heal needs the same TOOL that make chaos was given.
+heal="make heal"
+if [[ "${TOOL:-kind}" != "kind" ]]; then
+  heal+=" TOOL=${TOOL}"
+fi
 
 patch_path() { # deployment namespace probe value
   "${KUBECTL[@]}" -n "$2" patch deployment "$1" --type=json \
@@ -44,10 +52,13 @@ echo "==> pointing web's readiness probe at a path that does not exist"
 patch_path web shop readinessProbe /readyz-broken
 
 echo "==> waiting for the kubelet to notice (this takes about a minute)"
+# Only the broken paths answer 404. Counting every Unhealthy event would count
+# the connection-refused ones a freshly started shop records on its way up, and
+# stop waiting before either broken probe has run.
 deadline=$((SECONDS + 180))
 while (( SECONDS < deadline )); do
-  events=$("${KUBECTL[@]}" -n shop get events \
-    --field-selector reason=Unhealthy -o name 2>/dev/null | wc -l | tr -d ' ')
+  events=$("${KUBECTL[@]}" -n shop get events --field-selector reason=Unhealthy \
+    -o jsonpath='{range .items[*]}{.message}{"\n"}{end}' 2>/dev/null | grep -c 'statuscode: 404' || true)
   if (( events >= 2 )); then
     echo "==> ${events} Unhealthy events recorded"
     break
@@ -59,7 +70,7 @@ if (( events < 2 )); then
   echo "==> gave up waiting; the probes are broken, evidence may still be landing" >&2
 fi
 
-cat <<'MSG'
+cat <<MSG
 
 Now look at it:
 
@@ -69,5 +80,5 @@ Now look at it:
 
 Put it back with:
 
-  make heal
+  ${heal}
 MSG
