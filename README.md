@@ -8,6 +8,11 @@ is 90 seconds of traffic to a container that is already broken — so the plugin
 arithmetic, fills in the defaults the spec left out, and puts the `Unhealthy` events next
 to the configuration that produced them. It never exercises a probe itself.
 
+[popeye](https://github.com/derailed/popeye) and [kube-score](https://github.com/zegl/kube-score)
+check whether probes are present and look safe, alongside much else. This plugin looks at
+nothing but probes: what their timing adds up to, whether a running pod still matches its
+template, and what failures the cluster reports.
+
 ## Usage
 
 ```sh
@@ -112,15 +117,15 @@ container db
 
 ## Installation
 
-With [krew](https://krew.sigs.k8s.io/): `kubectl krew install probes`
-
-Or download the archive for your platform from
+Download the archive for your platform from
 [Releases](https://github.com/mertdotcc/kubectl-probes/releases), unpack it, and put the
 `kubectl-probes` binary on your `PATH`.
 
-`go install github.com/mertdotcc/kubectl-probes@latest` works but is not recommended: that
-build carries no version stamp, so it cannot tell you which one it is, and krew cannot
-upgrade it.
+With [krew](https://krew.sigs.k8s.io/), once the plugin is listed in krew-index:
+`kubectl krew install probes`
+
+`go install github.com/mertdotcc/kubectl-probes@latest` works too, but krew cannot upgrade
+a binary it did not install.
 
 ## Trying it on a real cluster
 
