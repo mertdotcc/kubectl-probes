@@ -124,9 +124,8 @@ Download the archive for your platform from
 With [krew](https://krew.sigs.k8s.io/), once the plugin is listed in krew-index:
 `kubectl krew install probes`
 
-`go install github.com/mertdotcc/kubectl-probes@latest` works but is not recommended: that
-build carries no version stamp, so it cannot tell you which one it is, and krew cannot
-upgrade it.
+`go install github.com/mertdotcc/kubectl-probes@latest` works too, but krew cannot upgrade
+a binary it did not install.
 
 ## Trying it on a real cluster
 
