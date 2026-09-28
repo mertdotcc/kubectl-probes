@@ -294,6 +294,30 @@ func TestRunRejectsUnknownFlagValues(t *testing.T) {
 	}
 }
 
+// A build without goreleaser's version prints the one Go recorded, in the
+// same form goreleaser's takes, and prints none when Go knows of none.
+func TestModuleVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "go install at a tag", in: "v0.1.0", want: "0.1.0"},
+		{name: "a checkout between tags", in: "v0.1.1-0.20261001120000-0123456789ab", want: "0.1.1-0.20261001120000-0123456789ab"},
+		{name: "a checkout with local changes", in: "v0.1.0+dirty", want: "0.1.0+dirty"},
+		{name: "a build without VCS information", in: "(devel)", want: ""},
+		{name: "no build information at all", in: "", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := moduleVersion(tt.in); got != tt.want {
+				t.Errorf("moduleVersion(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
 // flagUsage is the line the flag list gives a flag, which is where the help
 // for it is. The examples above it mention flags too, so it is the listing
 // that is looked for and not the name.

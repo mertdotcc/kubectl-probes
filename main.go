@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -31,10 +32,35 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
-// version is set by goreleaser through -ldflags at release time. When it is
-// empty cobra adds no --version flag, so development builds do not advertise
-// a version they do not have.
+// version is set by goreleaser through -ldflags at release time. buildVersion
+// falls back to what Go recorded when it is empty.
 var version string
+
+// buildVersion is the version --version prints. Without goreleaser's, the
+// module version Go recorded at build time stands in: v0.1.0 for `go install
+// …@v0.1.0`, and a pseudo-version for a checkout between tags. When there is
+// neither, cobra adds no --version flag, so a build never advertises a version
+// it does not have.
+func buildVersion() string {
+	if version != "" {
+		return version
+	}
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return ""
+	}
+	return moduleVersion(info.Main.Version)
+}
+
+// moduleVersion is a module version as --version prints it, without the
+// leading v, the way goreleaser's is. Go records "(devel)" when it knows of no
+// version, so that reads as none.
+func moduleVersion(v string) string {
+	if v == "(devel)" {
+		return ""
+	}
+	return strings.TrimPrefix(v, "v")
+}
 
 // Values accepted by -o/--output.
 const (
@@ -131,8 +157,8 @@ The plugin only reads from the API server. It never exercises a probe.`,
 	cmd.SetOut(color.Output)
 	cmd.SetErr(color.Error)
 
-	if version != "" {
-		cmd.Version = version
+	if v := buildVersion(); v != "" {
+		cmd.Version = v
 		cmd.SetVersionTemplate("{{.Version}}\n")
 	}
 
@@ -163,7 +189,7 @@ The plugin only reads from the API server. It never exercises a probe.`,
 	// here. Register the flags it would otherwise generate so their help text
 	// names the plugin instead.
 	flags.BoolP("help", "h", false, "help for kubectl probes")
-	if version != "" {
+	if cmd.Version != "" {
 		flags.Bool("version", false, "version for kubectl probes")
 	}
 
