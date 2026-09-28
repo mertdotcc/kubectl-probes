@@ -36,89 +36,98 @@ kubectl probes -A -o json | jq -r '.workloads[] | .displayName as $w
 > workloads whose *pods* carry `app=api`, which is usually what you meant but is not what
 > `kubectl get deploy -l app=api` does.
 
-## Example
+## Examples
 
-```console
-$ kubectl probes
-WORKLOAD                      CONTAINER    STARTUP     READINESS    LIVENESS    READY  RESTARTS  FAILURES  FINDINGS
-cj/nightly                    report       -           -            exec:1m30s  1/1    0         0         2
-deploy/api                    api          http:2m30s  http:1m30s*  http:30s    2/2    0         0         3
-deploy/web                    istio-proxy  http:1m     http:1m      -           1/1    1         2         2
-deploy/web                    web          -           tcp:30s      tcp:1m      1/1    0         0         4
-job/import                    import       -           -            -           1/1    0         0         0
-pod/debug                     debug        -           -            -           1/1    0         0         1
-rollout.argoproj.io/checkout  checkout     -           grpc:30s     -           1/1    0         0         1
-sts/cache                     cache        -           tcp:30s      -           0/0    0         0         0
-sts/db                        db           -           exec:30s     tcp:10s     1/2    7         13        4
-* running config differs from workload template
-```
+Every example below is the [demo cluster](hack/demo-cluster/) in this repository, running on
+minikube: first as `make up` leaves it, then after `make chaos` has broken two probes on
+purpose. `web`'s readiness probe and `catalog`'s liveness probe now ask for a path that
+answers 404.
 
-The table is followed by a Summary: how many containers have each probe, and how long a
-failing container goes unnoticed, with the container at each percentile named so an
-outlier is one command away. `--summary=only` prints it alone:
+### The overview, worst first
 
-```console
-$ kubectl probes --summary=only
-Summary: 9 containers in 8 workloads
+![kubectl probes -n shop --sort severity: one row per container, with web 2/3 ready and a drift marker on its readiness probe, and catalog restarted once](docs/img/probes09.png)
 
-Coverage
-  readiness   6 / 7   86%   (2 Job and CronJob containers not counted)
-  liveness    4 / 9   44%
-  startup     2 / 9   22%
-  none        2 / 9   22%
+One row per container. Each probe column is the handler and the one duration that probe is
+read for, and `--sort severity` puts the containers with probe failures first, then the
+ones that have restarted, then the ones only a rule has an opinion about.
 
-Readiness failure detection (6 containers)
-  P100 (max)  1m30s  deploy/api  api
-  P99         1m30s  deploy/api  api
-  P90         1m30s  deploy/api  api
-  P50         30s    sts/cache   cache
-  P10         30s    deploy/web  web
-  P0 (min)    30s    deploy/web  web
+Two rows are worth a look. `web` runs three pods where it asks for two, one of them not
+ready, and its readiness column carries a `*`: the running pods no longer match their own
+template. `catalog` has restarted.
 
-    ≤10s                          0
-  10–30s    ████████████████████  4
-  30s–1m    █████                 1
-    1–2m    █████                 1
-    2–5m                          0
-     >5m                          0
+### The Summary
 
-Liveness failure detection (4 containers)
-  …
-```
+Unless `--summary=hide` says otherwise, the table is followed by a Summary: how many
+containers have each probe, and how long a failing container goes unnoticed, with the
+container at each percentile named so an outlier is one command away. `--summary=only`
+prints it alone, here across the whole cluster, control plane included:
 
-Naming one workload switches to the detailed view. `sts/db` is the row above with seven
-restarts and thirteen failures:
+![kubectl probes -A --summary=only: probe coverage by type, then the readiness and liveness failure detection times at each percentile with the container named, and a histogram of each](docs/img/probes12.png)
 
-```console
-$ kubectl probes sts/db
-sts/db -n prod
-2 pods
+### A rollout that stalled without a restart
 
-container db
-  Configuration
-    PROBE      DELAY  PERIOD  TIMEOUT  SUCCESS  FAILURE  ACTS AFTER  HANDLER
-    startup    -
-    readiness  0s     10s     1s       1        3        30s         exec /bin/sh -c pg_isready -U postgres -h 127.0.0.1
-    liveness   0s     5s      1s       1        2        10s         tcp :5432
-  Effective timing
-    Readiness acts after 3 consecutive failures, at worst 30s after the container stops responding.
-    Liveness acts after 2 consecutive failures, at worst 10s after the container stops responding.
-  Runtime state
-    POD   READY  STARTED  RESTARTS  LAST TERMINATION                     POD-READY        CONTAINERS-READY
-    db-0  false  true     7         Error, exit 137, signal 9, 8m2s ago  False (28m ago)  False (28m ago)
-    db-1  true   true     0         -                                    True (37h ago)   True (37h ago)
-  Failure evidence
-    POD   PROBE      FAILURES  FIRST SEEN  LAST SEEN
-    db-0  readiness  9         28m ago     110s ago
-      Readiness probe failed: /bin/sh: pg_isready: connection to server at "127.0.0.1", port 5432 failed: Connection refused
-    db-0  liveness   4         15m ago     8m8s ago
-      Liveness probe failed: dial tcp 10.44.2.17:5432: connect: connection refused
-  Findings
-    liveness-faster-than-readiness  Liveness detects failure in 10s and readiness in 30s, so a failing container is restarted before it is taken out of service.
-    timeout-at-default              The readiness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing.
-    timeout-at-default              The liveness probe allows the default 1s for an answer, so a container that is only slow to answer counts as failing.
-    probe-failures-recent           The cluster reports 13 recent Unhealthy events for the readiness and liveness probes, so this is failing now and not only on paper.
-```
+![kubectl probes deploy/web after make chaos: three pods, one of them not ready for 24 minutes, a Drift table with /readyz running and /readyz-broken in the template, and 249 readiness failures with status code 404](docs/img/probes11.png)
+
+Changing `web`'s readiness path started a rollout. The new pod runs the new probe, fails
+it, and never becomes ready, so the rollout stops there and the two old pods keep serving
+on the old one. Twenty-four minutes and 249 failures later nothing has restarted, and
+`kubectl get deploy web` still reports `2/2`.
+
+Naming the workload puts the pieces side by side. The `*` on the readiness handler and the
+Drift table say what changed: `/readyz` in the running pods, `/readyz-broken` in the
+template. The runtime state names the one pod that is not ready, and the failure evidence
+carries the kubelet's own message: status code 404.
+
+<details>
+<summary>The same workload before <code>make chaos</code></summary>
+
+![kubectl probes deploy/web on the healthy cluster: a startup probe with a one-minute budget, readiness and liveness on different endpoints, and no Unhealthy events](docs/img/probes01.png)
+
+Probes done well. A startup probe gives the boot a minute, readiness and liveness check
+different endpoints, and every timeout is written out. There are no findings.
+
+</details>
+
+### A liveness probe restarting its container
+
+![kubectl probes deploy/catalog after make chaos: one restart, a last termination of Completed with exit 0, four liveness failures with status code 404, and three findings](docs/img/probes10.png)
+
+`catalog`'s liveness probe fails three times in a row, 30s at worst, and the kubelet
+restarts the container. The last termination reads `Completed, exit 0`: a container stopped
+by its liveness probe can shut down cleanly, and nothing in how it exited says why. The
+failure evidence does. It names the liveness probe and the 404 it got.
+
+The first two findings were there before anything broke: without a readiness probe the
+container counts as ready the moment it starts, and its liveness probe gives it the default
+1s to answer.
+
+### Findings on a pod that looks healthy
+
+![kubectl probes sts/postgres: ready with no restarts, and findings about a fixed liveness delay standing in for a startup probe, a timeout longer than its period, and two readiness failures from startup](docs/img/probes04.png)
+
+`postgres` is ready and has never restarted. The findings are about its configuration:
+liveness waits a fixed 45s where a startup probe would measure when Postgres is actually
+up, and its 30s timeout is longer than its 20s period, so a check can still be outstanding
+when the next one is due. The two readiness failures were recorded while it started, 152
+minutes earlier. The demo cluster keeps events for a day rather than the API server's
+default hour, which is why they still count.
+
+### Before it is applied
+
+![kubectl probes -f manifests/shop: the same six workloads read from YAML, every one 0/0 ready, with their findings counted](docs/img/probes06.png)
+
+`-f` reads manifests instead of the cluster, the same files `kubectl apply -f` would take,
+so the configuration findings are there before anything runs. With no pods behind them,
+every workload is `0/0` and there is no failure evidence to count.
+
+### In a script
+
+![kubectl probes -A -o json piped to jq, listing every container in the cluster with no readiness probe](docs/img/probes07.png)
+
+`-o json` and `-o yaml` print the same report as data. This is the query from
+[Usage](#usage): every container in the cluster without a readiness probe. The control
+plane's static pods appear as `node/<name>` and a pod with no owner as `pod/<name>`, so
+nothing that runs is left out.
 
 ## Installation
 
@@ -146,8 +155,9 @@ make probes
 ```
 
 `kubectl` and `kind` or `minikube` are the only tools it needs. `make chaos` breaks
-probes on purpose when you want failure evidence to look at. The plugin itself is not
-tied to either: it reads whatever cluster your kubeconfig points at.
+probes on purpose when you want failure evidence to look at, and is how the
+[examples](#examples) above were made. The plugin itself is not tied to either: it reads
+whatever cluster your kubeconfig points at.
 
 ## Flags
 
@@ -184,6 +194,10 @@ computed from the *effective* configuration: the spec with the kubelet's default
   is unknown because listing events was forbidden, which is not the same as zero.
 - **`READY`** is ready pods over total pods. `0/0` is a workload with no pods, read from
   its pod template alone.
+- **`WORKLOAD`** is the pods' top-most owner, found by following `ownerReferences`: a
+  ReplicaSet folds into its Deployment and a Job into its CronJob, a custom owner such as
+  an Argo Rollout is named by its resource (`rollout.argoproj.io/checkout`), a static pod
+  shows as `node/<name>`, and a pod with no owner as `pod/<name>`.
 
 > **`FAILURES` is recent history only.** It counts `Unhealthy` events, and the API server
 > keeps those about an hour by default. Zero means nothing has failed recently, not that
