@@ -8,6 +8,11 @@ is 90 seconds of traffic to a container that is already broken — so the plugin
 arithmetic, fills in the defaults the spec left out, and puts the `Unhealthy` events next
 to the configuration that produced them. It never exercises a probe itself.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/img/probes-dark.gif">
+  <img alt="kubectl probes: the startup, readiness and liveness probes of a container drawn as three rings, each row showing the timing the plugin computes and the state it reads" src="docs/img/probes-light.gif">
+</picture>
+
 [popeye](https://github.com/derailed/popeye) and [kube-score](https://github.com/zegl/kube-score)
 check whether probes are present and look safe, alongside much else. This plugin looks at
 nothing but probes: what their timing adds up to, whether a running pod still matches its
