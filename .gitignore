@@ -1,2 +1,3 @@
 dist/
 kubectl-probes
+.DS_Store
