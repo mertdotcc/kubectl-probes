@@ -3,6 +3,7 @@
 [![release](https://img.shields.io/github/v/release/mertdotcc/kubectl-probes?label=release&color=orange)](https://github.com/mertdotcc/kubectl-probes/releases/latest)
 [![GitHub stars](https://img.shields.io/github/stars/mertdotcc/kubectl-probes?style=social&label=GitHub%20stars)](https://github.com/mertdotcc/kubectl-probes/stargazers)
 [![CI](https://github.com/mertdotcc/kubectl-probes/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mertdotcc/kubectl-probes/actions/workflows/ci.yml?query=branch%3Amain)
+[![Go version](https://img.shields.io/github/go-mod/go-version/mertdotcc/kubectl-probes)](https://github.com/mertdotcc/kubectl-probes/blob/main/go.mod)
 
 A read-only `kubectl` plugin that shows, per workload and container, which startup,
 readiness, and liveness probes are configured, what their settings mean in practice, and
